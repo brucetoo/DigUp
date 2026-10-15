@@ -50,11 +50,11 @@ echo "first launch"
 started=$(date +%s)
 "$installed/DigUp.exe" --index "$(win "$work/index")" --settings "$(win "$work/settings.json")" \
   --offer "$(win "$work/files")" --hotkey "Ctrl+Alt+Shift+D" --debug-setup --debug-query "how long to bake the cake" \
-  --debug-quit > "$work/out.txt" 2> "$work/err.txt" &
+  --debug-report "$(win "$work/panel.json")" --debug-quit > "$work/out.txt" 2> "$work/err.txt" &
 app=$!
 report=
 while kill -0 "$app" 2> /dev/null && (( $(date +%s) - started < ${DIGUP_PACKAGE_TIMEOUT:-1800} )); do
-  report=$(grep '^{' "$work/out.txt" 2> /dev/null | tail -1 || true)
+  report=$(cat "$work/panel.json" 2> /dev/null || true)
   [[ -n $report ]] && break
   sleep 2
 done
@@ -65,7 +65,7 @@ if kill -0 "$app" 2> /dev/null; then
   echo "DigUp didn't quit after its report: ending it"
   taskkill //F //T //IM DigUp.exe > /dev/null || true
 fi
-report=$(grep '^{' "$work/out.txt" | tail -1 || true)
+report=$(cat "$work/panel.json" 2> /dev/null || true)
 echo "after $(( $(date +%s) - started )) s"
 if [[ -z $report ]]; then
   echo "--- stdout"; tail -20 "$work/out.txt"

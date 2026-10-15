@@ -496,6 +496,12 @@ fn debug_query(shell: State<'_, Arc<Shell>>) -> Option<String> {
 /// Debug runs: what the page showed for the debug query, printed (and the shell quits, if asked).
 #[tauri::command]
 fn debug_report(app: AppHandle, shell: State<'_, Arc<Shell>>, report: Value) {
+    if let Some(path) = &shell.options.debug_report {
+        if let Err(error) = std::fs::write(path, format!("{report}\n")) {
+            eprintln!("digup-shell: can't write debug report: {error}");
+            return;
+        }
+    }
     println!("{report}");
     if shell.options.debug_quit {
         quit(&app);

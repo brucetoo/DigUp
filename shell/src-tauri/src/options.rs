@@ -36,6 +36,8 @@ pub struct Options {
     pub debug_query: Option<String>,
     /// Debug runs: quit once the report is in.
     pub debug_quit: bool,
+    /// Write the debug report here; Windows GUI builds do not reliably inherit redirected stdout.
+    pub debug_report: Option<PathBuf>,
     /// Debug runs: show the panel at launch and keep it up when it loses focus.
     pub debug_show: bool,
     /// Debug runs: the window opens (hidden unless `debug_show`) with this query typed in ("" for its home) and reports
@@ -72,6 +74,7 @@ impl Options {
             debug_setup: false,
             debug_query: None,
             debug_quit: false,
+            debug_report: None,
             debug_show: false,
             debug_window: None,
             debug_settings: false,
@@ -98,6 +101,7 @@ impl Options {
                 "--debug-setup" => options.debug_setup = true,
                 "--debug-query" => options.debug_query = Some(value()?),
                 "--debug-quit" => options.debug_quit = true,
+                "--debug-report" => options.debug_report = Some(value()?.into()),
                 "--debug-show" => options.debug_show = true,
                 "--debug-window" => options.debug_window = Some(value()?),
                 "--debug-settings" => options.debug_settings = true,
@@ -147,6 +151,8 @@ impl Options {
 fn model_location(explicit: Option<PathBuf>, resources: Option<PathBuf>, packaged: bool, windows: bool)
     -> (Option<PathBuf>, bool) {
     let required = windows && packaged;
+    let explicit = explicit.map(|path| model_path(path, windows));
+    let resources = resources.map(|path| model_path(path, windows));
     if explicit.is_some() {
         return (explicit, required);
     }
@@ -159,9 +165,39 @@ fn model_location(explicit: Option<PathBuf>, resources: Option<PathBuf>, package
     (None, required)
 }
 
+// Tauri can return extended Windows paths. Swift Foundation treats their prefix as URL syntax.
+fn model_path(path: PathBuf, windows: bool) -> PathBuf {
+    if windows {
+        if let Some(value) = path.to_str() {
+            if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+                return PathBuf::from(format!(r"\\{unc}"));
+            }
+            if let Some(drive) = value.strip_prefix(r"\\?\") {
+                if drive.as_bytes().get(1) == Some(&b':') {
+                    return PathBuf::from(drive);
+                }
+            }
+        }
+    }
+    path
+}
+
 #[cfg(test)]
 mod model_tests {
     use super::*;
+
+    #[test]
+    fn windows_resource_paths_reach_swift_without_extended_prefixes() {
+        let resource = PathBuf::from(r"\\?\C:\Users\中文 User\AppData\Local\DigUp");
+        assert_eq!(model_location(None, Some(resource), true, true),
+            (Some(PathBuf::from(r"C:\Users\中文 User\AppData\Local\DigUp").join("models")), true));
+        assert_eq!(model_path(PathBuf::from(r"\\?\UNC\server\share\models"), true),
+            PathBuf::from(r"\\server\share\models"));
+        let explicit = PathBuf::from(r"\\?\D:\models");
+        assert_eq!(model_location(Some(explicit.clone()), None, true, true),
+            (Some(PathBuf::from(r"D:\models")), true));
+        assert_eq!(model_path(explicit.clone(), false), explicit);
+    }
 
     #[test]
     fn installed_windows_never_uses_cache_or_downloads() {
