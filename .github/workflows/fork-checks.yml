@@ -1,0 +1,39 @@
+name: Fork checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never use pull_request_target or expose publishing/signing tokens to PR code.
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    if: github.repository == 'brucetoo/DigUp'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check script syntax
+        run: bash -n scripts/sync-upstream.sh
+      - name: Isolated local tests
+        run: python3 -B -m unittest discover -s scripts/tests -p 'test_fork_*.py' -v
+      - name: Live catalogs and model pins
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'refs/remotes/origin/main' }}
+        run: |
+          if [[ "$BASE" == 0000000000000000000000000000000000000000 ]]; then
+            echo "Initial main push: validate current model manifest without a previous commit."
+            python3 -B scripts/check-fork.py
+          else
+            python3 -B scripts/check-fork.py --base "$BASE"
+          fi
+      - name: JavaScript localization behavior
+        run: node --test shell/ui/i18n.test.cjs
