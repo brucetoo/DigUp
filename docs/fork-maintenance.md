@@ -234,6 +234,20 @@ gh run list --repo brucetoo/DigUp --workflow packages.yml
 `packages.yml` 由父任务维护；同步工作流不调用它，不自动发布。
 构建产物必须通过安装、离线运行和双语验收后再人工上传 Releases。
 
+已有 CI 安装包可单独复核，`run_id` 使用生成该产物的任务 ID：
+
+```bash
+gh workflow run windows-package-check.yml --repo brucetoo/DigUp \
+  -f run_id=38701195733 -f rebuild_shell=false
+```
+
+该任务保留首次运行报告和 helper 日志，失败时也会上传
+`Windows-package-report`。`rebuild_shell=true` 仅适用于 Swift helper、
+依赖、模型和许可证均未变更的桌面层修复：它从原包复用这些文件，
+重新构建 Rust 桌面层和 NSIS 安装包。helper 或依赖有变化时必须
+通过 `packages.yml` 完整构建。安装脚本使用 `--debug-report` 文件
+检查搜索结果，不依赖 Windows GUI 程序的标准输出。
+
 ## 更新与发布边界
 
 目前没有配置自己的 Developer ID、公证、Windows Authenticode、

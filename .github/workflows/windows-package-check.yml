@@ -6,11 +6,11 @@ on:
       run_id:
         description: Packages run containing DigUp-windows-x64
         required: true
-        default: "38691573346"
+        default: "38701195733"
       rebuild_shell:
         description: Rebuild desktop shell using the unchanged helper and models from this package
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
