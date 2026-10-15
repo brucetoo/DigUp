@@ -40,11 +40,15 @@ cp "$BIN_DIR/DigUpApp" "$APP/Contents/MacOS/$APP_NAME"
 # The indexing helper lives in Helpers/: next to DigUp in MacOS/ it would collide on a case-insensitive disk.
 cp "$BIN_DIR/digup" "$APP/Contents/Helpers/digup"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp -R "$BIN_DIR/DigUp_DigUpApp.bundle" "$APP/Contents/Resources/"
+cp -R Resources/zh-Hans.lproj Resources/en.lproj "$APP/Contents/Resources/"
 xcrun actool --compile "$APP/Contents/Resources" --platform macosx --target-device mac --minimum-deployment-target 14.0 \
   --app-icon AppIcon --output-partial-info-plist "$(mktemp -d)/AppIcon.plist" --enable-on-demand-resources NO \
-  --development-region en "$PWD/Resources/AppIcon/AppIcon.icon" > /dev/null
+  --development-region zh-Hans "$PWD/Resources/AppIcon/AppIcon.icon" > /dev/null
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"   # over actool's plainer fallback: ours has simplified 16 and 32 px
-cp Resources/Acknowledgements.txt "$APP/Contents/Resources/Acknowledgements.txt"
+# Models and their source license are mandatory resources, finalized before code signing.
+python3 scripts/bundle-models.py --to "$APP/Contents/Resources/Models"
+python3 scripts/notices.py macos "$APP/Contents/Resources/Acknowledgements.txt" "$APP/Contents/Resources/Models"
 cp Resources/AppIcon/tray.png Resources/AppIcon/tray-dim.png Resources/AppIcon/tray-paused.png "$APP/Contents/Resources/"   # the menubar's logo
 
 # Sparkle (in-app updates): the framework in Frameworks/, where the app's runpath looks. Its XPC services are for
@@ -82,5 +86,8 @@ if [[ "$IDENTITY" == - ]]; then
   /usr/libexec/PlistBuddy -c "Add :com.apple.security.cs.disable-library-validation bool true" "$ENTITLEMENTS"
 fi
 codesign --force --sign "$IDENTITY" --options runtime $TIMESTAMP --entitlements "$ENTITLEMENTS" "$APP"
+python3 scripts/bundle-models.py --verify-only --to "$APP/Contents/Resources/Models"
+"$APP/Contents/Helpers/digup" verify-models --to "$APP/Contents/Resources/Models"
+codesign --verify --deep --strict "$APP"
 echo "Signed $([[ "$IDENTITY" == - ]] && echo ad-hoc || echo "with \"$IDENTITY\"") (hardened runtime)"
 echo "Built $APP"

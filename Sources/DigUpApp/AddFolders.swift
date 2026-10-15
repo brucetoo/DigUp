@@ -12,6 +12,7 @@ final class AddFoldersController {
     private unowned let app: AppController
     private(set) var choices: FolderChoices?
     private var sheet: NSWindow?
+    private var languageObserver: NSObjectProtocol?
     let code: Bool
     /// The folders changed (Settings refreshes its list).
     var onAdded: () -> Void = {}
@@ -19,6 +20,13 @@ final class AddFoldersController {
     init(app: AppController, code: Bool = false) {
         self.app = app
         self.code = code
+        languageObserver = NotificationCenter.default.addObserver(forName: L10n.didChange, object: nil,
+                                                                  queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.sheet?.title = self.code ? L10n.tr("Code Folders") : L10n.tr("Add Folders")
+            }
+        }
     }
 
     var isOpen: Bool { choices != nil }
@@ -52,9 +60,9 @@ final class AddFoldersController {
                                   pick: { [weak self] in self?.pick() },
                                   cancel: { [weak self] in self?.end() },
                                   add: { [weak self] in self?.add() })
-        let sheet = NSWindow(contentViewController: NSHostingController(rootView: view))
+        let sheet = NSWindow(contentViewController: NSHostingController(rootView: LocalizedRoot(content: view)))
         sheet.styleMask = [.titled]
-        sheet.title = code ? "Code Folders" : "Add Folders"
+        sheet.title = code ? L10n.tr("Code Folders") : L10n.tr("Add Folders")
         self.sheet = sheet
         choices.startEstimates()
         log("add folders: \(choices.rows.count) to choose from")
@@ -105,17 +113,14 @@ private struct AddFoldersView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 16) {
                 if choices.code {
-                    StepTitle(title: "Search your code",
-                              subtitle: "Pick the folders that hold your projects; open one to pick among its repos. "
-                                  + "DigUp reads each once, then what changes. Code is searched on its own: type "
-                                  + "code: in the search panel.")
+                    StepTitle(title: L10n.tr("Search your code"),
+                              subtitle: L10n.tr("Pick the folders that hold your projects; open one to pick among its repos. DigUp reads each once, then what changes. Code is searched on its own: type code: in the search panel."))
                 } else {
-                    StepTitle(title: "Add folders to search",
-                              subtitle: "DigUp reads a new folder once, then keeps up with what changes in it. "
-                                  + "Open a folder to pick some of its subfolders.")
+                    StepTitle(title: L10n.tr("Add folders to search"),
+                              subtitle: L10n.tr("DigUp reads a new folder once, then keeps up with what changes in it. Open a folder to pick some of its subfolders."))
                 }
                 ScrollView {
-                    FolderList(choices: choices, addTitle: "Choose Another Folder…", add: pick)
+                    FolderList(choices: choices, addTitle: L10n.tr("Choose Another Folder…"), add: pick)
                     if choices.code { CodeFolderNote().padding(.top, 8) }
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -130,9 +135,9 @@ private struct AddFoldersView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                Button("Cancel", action: cancel)
+                Button(L10n.tr("Cancel"), action: cancel)
                     .keyboardShortcut(.cancelAction)
-                Button("Add", action: add)
+                Button(L10n.tr("Add"), action: add)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!choices.changesSomething)
             }
@@ -144,15 +149,15 @@ private struct AddFoldersView: View {
     }
 
     private var summary: String {
-        guard choices.changesSomething else { return "Check the folders to add" }
-        guard choices.estimatesDone else { return "Looking at the folders…" }
-        let time = choices.totalSeconds < 1 ? "under a second" : "about \(roughDuration(choices.totalSeconds))"
+        guard choices.changesSomething else { return L10n.tr("Check the folders to add") }
+        guard choices.estimatesDone else { return L10n.tr("Looking at the folders…") }
+        let time = choices.totalSeconds < 1 ? L10n.tr("under a second") : L10n.tr("about \(roughDuration(choices.totalSeconds))")
         if choices.code {
-            return "Adds \(time) of indexing and \(roughBytes(choices.totalBytes))"
+            return L10n.tr("Adds \(time) of indexing and \(roughBytes(choices.totalBytes))")
         }
         let later = choices.totalLaterSeconds
-        return "Adds \(time) of indexing"
-            + (later >= 30 ? ", and \(roughDuration(later)) more for long files" : "")
+        return L10n.tr("Adds \(time) of indexing")
+            + (later >= 30 ? L10n.tr(", and \(roughDuration(later)) more for long files") : "")
     }
 }
 
@@ -160,8 +165,7 @@ private struct AddFoldersView: View {
 struct CodeFolderNote: View {
     var body: some View {
         Label {
-            Text("Code search reads source files, notebooks and a repo's own docs. It skips what git ignores, vendored "
-                 + "and generated code, data files, and anything that looks like a key or a password.")
+            Text(L10n.tr("Code search reads source files, notebooks and a repo's own docs. It skips what git ignores, vendored and generated code, data files, and anything that looks like a key or a password."))
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: "info.circle")

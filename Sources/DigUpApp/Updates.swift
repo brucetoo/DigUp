@@ -23,28 +23,24 @@ final class Updates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate
     /// Dev and test runs (their own defaults suite) don't check: Sparkle keeps its state in the app's real defaults.
     /// `-debugUpdates YES` lets one check anyway.
     func start() {
-        let defaults = UserDefaults.standard
-        guard defaults.string(forKey: "defaultsSuite") == nil || defaults.bool(forKey: "debugUpdates") else { return }
-        controller.startUpdater()
-        log("updates: \(controller.updater.automaticallyChecksForUpdates ? "checking daily" : "automatic checks off") "
-            + "at \(controller.updater.feedURL?.absoluteString ?? "no feed")")
+        // Fork releases do not share the upstream signing identity or update feed.
     }
 
     var automaticallyChecks: Bool {
-        get { controller.updater.automaticallyChecksForUpdates }
-        set { controller.updater.automaticallyChecksForUpdates = newValue }
+        get { false }
+        set { }
     }
 
-    var canCheck: Bool { controller.updater.canCheckForUpdates }
+    var canCheck: Bool { true }
 
     /// "Check for Updates…" and the waiting update's menu item: Sparkle's window, in front.
     func checkNow() {
-        controller.checkForUpdates(nil)
+        NSWorkspace.shared.open(URL(string: "https://github.com/brucetoo/DigUp/releases")!)
     }
 
     /// A check in the background, as the daily one (for `-debugUpdateCheck`).
     func checkInBackground() {
-        controller.updater.checkForUpdatesInBackground()
+        // No automatic installation until the fork has its own signing key and feed.
     }
 
     // MARK: Gentle reminders

@@ -40,11 +40,13 @@ fi
 # The license of everything the installer carries, installed beside the app. (python3 can be the Store's stub.)
 python=python3
 python3 -c '' 2> /dev/null || python=python
-"$python" scripts/notices.py windows shell/src-tauri/THIRD-PARTY-NOTICES.txt
+models=shell/src-tauri/models
+"$python" scripts/bundle-models.py --to "$models"
+"$python" scripts/notices.py windows shell/src-tauri/THIRD-PARTY-NOTICES.txt "$models"
 # Installers of an earlier build (another version) would be taken for this one's.
 rm -rf shell/src-tauri/target/release/bundle/nsis
 # The helper folder goes in as the installer's resources here only: Tauri checks resources on every build.
-resources='{"helper/":"helper/","THIRD-PARTY-NOTICES.txt":"THIRD-PARTY-NOTICES.txt"}'
+resources='{"helper/":"helper/","models/":"models/","THIRD-PARTY-NOTICES.txt":"THIRD-PARTY-NOTICES.txt"}'
 (cd shell/src-tauri && npx --yes "@tauri-apps/cli@$TAURI_CLI" build --bundles nsis \
   --config "{\"bundle\":{\"resources\":$resources$signing}}")
 ls -la shell/src-tauri/target/release/bundle/nsis/

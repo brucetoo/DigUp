@@ -1,16 +1,13 @@
 #!/bin/bash
 # Checks DigUp's Windows installer the way someone first meets it: installed silently for the current user, a hidden
-# first launch goes through setup by itself (the model from MODELS, downloaded there when it isn't), indexes a picture,
+# first launch uses only the installer's bundled models, indexes a picture,
 # a screenshot, a recording and a note with the model and finds the note from the search panel; then its helper runs
 # with only Windows on PATH (everything else it needs is beside it). In Git for Windows' bash; the packages workflow
 # runs it after building the installer.
-#   MODELS=<folder> scripts/check-windows-package.sh <DigUp_x.y.z_x64-setup.exe>
+#   scripts/check-windows-package.sh <DigUp_x.y.z_x64-setup.exe>
 set -euo pipefail
 cd "$(dirname "$0")/.."
 setup=${1:?the installer}
-models=${MODELS:?set MODELS to a folder for the model files (they are downloaded there when missing)}
-mkdir -p "$models"
-models=$(cygpath -m "$models")
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 win() { cygpath -m "$1"; }
@@ -19,6 +16,14 @@ echo "installing $setup"
 MSYS_NO_PATHCONV=1 "$setup" /S
 installed=$(cygpath -u "$LOCALAPPDATA")/DigUp
 ls "$installed/DigUp.exe" "$installed/helper/digup.exe" > /dev/null
+models=$(win "$installed/models")
+python=python3
+python3 -c '' 2> /dev/null || python=python
+# Check against Swift's authoritative pins, not just the marker's claims, without any downloads.
+"$python" scripts/bundle-models.py --verify-only --to "$installed/models"
+helper=$installed/helper/digup.exe
+PATH="/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem" \
+  "$helper" verify-models --to "$models"
 # The licenses of what the installer carries, beside the app.
 grep -q "GNU LESSER GENERAL PUBLIC LICENSE" "$installed/THIRD-PARTY-NOTICES.txt" || { echo "no license notices"; exit 1; }
 
@@ -34,7 +39,7 @@ TEXT
 
 echo "first launch"
 started=$(date +%s)
-"$installed/DigUp.exe" --index "$(win "$work/index")" --models "$models" --settings "$(win "$work/settings.json")" \
+"$installed/DigUp.exe" --index "$(win "$work/index")" --settings "$(win "$work/settings.json")" \
   --offer "$(win "$work/files")" --hotkey "Ctrl+Alt+Shift+D" --debug-setup --debug-query "how long to bake the cake" \
   --debug-quit > "$work/out.txt" 2> "$work/err.txt" &
 app=$!
@@ -66,7 +71,6 @@ if [[ $report != *'"recipe.txt"'* ]]; then
 fi
 
 echo "the helper with only Windows on PATH"
-helper=$installed/helper/digup.exe
 PATH="/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem" "$helper" status --index "$(win "$work/index")" \
   | tee "$work/status.txt"
 grep -Eq '^vectors: 5 in 5 segments' "$work/status.txt" || { echo "not every file has a vector"; exit 1; }

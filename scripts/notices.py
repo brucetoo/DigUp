@@ -4,7 +4,7 @@ the libraries' own license files (llama.cpp's and PDFium's from Vendor/, ffmpeg'
 ffmpeg scripts/build-ffmpeg.sh makes, Swift's from the toolchain or scripts/licenses), and of every Rust crate the app
 is built from (Cargo's own record of them, normal dependencies only: build tools and macros don't end up in the app).
 
-    scripts/notices.py linux|windows <out.txt>
+    scripts/notices.py linux|windows|macos <out.txt> [<bundled-models>]
 
 Run it from the packaging scripts, after scripts/fetch-vendor.sh, scripts/build-llama.sh and scripts/build-ffmpeg.sh.
 It stops if a license it needs is missing: the packages don't go out without their notices.
@@ -126,10 +126,29 @@ def rust_section(platform):
     return "\n".join(parts)
 
 
+def model_section(models):
+    """Only include model notices from a complete, independently verified bundle."""
+    models = Path(models)
+    subprocess.run([sys.executable, str(ROOT / "scripts/bundle-models.py"), "--verify-only",
+                    "--to", str(models)], check=True)
+    return section("Bundled models (available offline)", need(models / "MODEL-NOTICES.txt"))
+
+
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("linux", "windows"):
+    if len(sys.argv) not in (3, 4) or sys.argv[1] not in ("linux", "windows", "macos"):
         sys.exit(__doc__)
     platform, out = sys.argv[1], Path(sys.argv[2])
+    models = Path(sys.argv[3]) if len(sys.argv) == 4 else ROOT / "shell/src-tauri/models"
+    if platform == "macos":
+        if len(sys.argv) != 4:
+            sys.exit("notices: macos requires the bundled Models folder")
+        # Keep the existing library acknowledgements, replacing only the obsolete
+        # first-launch-download model section in the source resource.
+        original = need(ROOT / "Resources/Acknowledgements.txt")
+        original = re.sub(r"\n=+\nThe model\n=+\n.*\Z", "", original, flags=re.S)
+        out.write_text(original + "\n\n" + model_section(models) + "\n", encoding="utf-8")
+        print(f"{out}: {out.stat().st_size // 1024} KB")
+        return
     ffmpeg, dav1d = build_ffmpeg_versions()
     llama = VENDOR / "llama.cpp"
     pdfium = VENDOR / "pdfium"
@@ -139,9 +158,12 @@ def main():
     parts = [
         "DigUp for Windows and Linux includes code from these projects, under their own licenses. Thank you.",
         "",
-        "DigUp (https://github.com/ARahim3/DigUp) is MIT licensed; its license is the first one below. The model it uses, "
+        ("DigUp (https://github.com/ARahim3/DigUp) is MIT licensed; its license is the first one below. "
+         "The models are included for offline use; their source licenses and model cards follow."
+         if windows else
+         "DigUp (https://github.com/ARahim3/DigUp) is MIT licensed; its license is the first one below. The model it uses, "
         "Google DeepMind's EmbeddingGemma 2 (Apache 2.0), isn't part of this download: DigUp downloads it from Hugging "
-        "Face on first launch.",
+        "Face on first launch."),
         "",
         section("DigUp", need(ROOT / "LICENSE")),
         section("llama.cpp and ggml (https://github.com/ggml-org/llama.cpp), the embedding runtime, with one small "
@@ -193,6 +215,8 @@ def main():
                           "Their source is Ubuntu's: https://packages.ubuntu.com/jammy. The .deb uses your system's "
                           "own copies instead.")]
     parts.append(rust_section(platform))
+    if windows:
+        parts.append(model_section(models))
     out.write_text("\n".join(parts) + "\n", encoding="utf-8")
     print(f"{out}: {out.stat().st_size // 1024} KB")
 

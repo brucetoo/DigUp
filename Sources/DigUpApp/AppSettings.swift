@@ -21,6 +21,8 @@ nonisolated struct AppSettings: Sendable {
     var indexDirectory: URL
     /// Where the model files are downloaded to and loaded from (the helpers get it as DIGUP_MODELS).
     var modelsDirectory: URL
+    /// Packaged resources are read in place and must never trigger a network repair.
+    var bundledModels: Bool = false
     var hotkey: String
     /// On (the default), the big first pass of a folder (the backfill) runs on battery too; off, it waits for a
     /// charger. New files always index right away, and Low Power Mode or a hot Mac make the backfill wait either way.
@@ -68,7 +70,9 @@ nonisolated struct AppSettings: Sendable {
                 ?? defaults.string(forKey: "excludedTypes").map { [$0] } ?? [])
                 .flatMap { IndexOptions.extensions($0) }.sorted(),
             indexDirectory: defaults.string(forKey: "indexDir").map(folderURL) ?? defaultIndexDirectory,
-            modelsDirectory: defaults.string(forKey: "modelsDir").map(folderURL) ?? ModelFiles.installed,
+            modelsDirectory: defaults.string(forKey: "modelsDir").map(folderURL)
+                ?? bundledModelsDirectory ?? ModelFiles.installed,
+            bundledModels: defaults.string(forKey: "modelsDir") == nil && bundledModelsDirectory != nil,
             hotkey: defaults.string(forKey: "hotkey") ?? defaultHotkey,
             indexOnBattery: defaults.object(forKey: "indexOnBattery") == nil || defaults.bool(forKey: "indexOnBattery"),
             indexHoursOn: defaults.bool(forKey: "indexHoursOn"),
@@ -85,6 +89,12 @@ nonisolated struct AppSettings: Sendable {
             codeEditor: defaults.string(forKey: "codeEditor"),
             codeQuietSeconds: defaults.object(forKey: "codeQuietSeconds") == nil
                 ? 60 : max(1, defaults.double(forKey: "codeQuietSeconds")))
+    }
+
+    /// Every fork app bundle declares offline models, even when the resource directory is damaged.
+    static var bundledModelsDirectory: URL? {
+        guard Bundle.main.object(forInfoDictionaryKey: "DigUpBundledModels") as? Bool == true else { return nil }
+        return Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/Models")
     }
 
     /// A list of folders: a plist array, or paths joined with ":" (the form launch arguments use).

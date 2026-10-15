@@ -315,23 +315,37 @@ impl ModelDownload {
         drop(stdin);
         let number = STARTED.fetch_add(1, Ordering::Relaxed);
         let (on_event, slot) = (self.on_event.clone(), self.running.clone());
+        let verifying = launch.args.first().is_some_and(|arg| arg == "verify-models");
         std::thread::spawn(move || {
             let mut ended = false;
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
                 if let Ok(event) = serde_json::from_str::<Value>(&line) {
+                    // Verification's exit status is authoritative, not a premature "done" line.
+                    if verifying && event["event"] == "done" {
+                        continue;
+                    }
                     ended |= event["event"] == "done" || event["event"] == "error";
                     on_event(event);
                 }
             }
             let mut slot = slot.lock().unwrap();
+            let mut exit = None;
+            let mut current = false;
             if slot.as_ref().is_some_and(|(_, started)| *started == number) {
                 if let Some((mut child, _)) = slot.take() {
-                    reap(&mut child);
+                    current = true;
+                    exit = reap(&mut child);
+                    if exit.is_none() {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                    }
                 }
             }
             drop(slot);
-            if !ended {
+            if verifying && current {
+                on_event(verification_event(exit, ended));
+            } else if !verifying && !ended {
                 on_event(json!({"event": "error", "message": "the download stopped"}));
             }
         });
@@ -344,6 +358,29 @@ impl ModelDownload {
             let _ = child.kill();
             let _ = child.wait();
         }
+    }
+}
+
+fn verification_event(exit: Option<i32>, failed: bool) -> Value {
+    if exit == Some(0) && !failed {
+        json!({"event": "done"})
+    } else {
+        json!({"event": "error", "message": "Bundled models are missing or corrupt. Repair the installation.",
+               "repair": true})
+    }
+}
+
+#[cfg(test)]
+mod model_tests {
+    use super::*;
+
+    #[test]
+    fn verification_requires_clean_exit() {
+        assert_eq!(verification_event(Some(0), false)["event"], "done");
+        for exit in [None, Some(1), Some(2)] {
+            assert_eq!(verification_event(exit, false)["repair"], true);
+        }
+        assert_eq!(verification_event(Some(0), true)["event"], "error");
     }
 }
 

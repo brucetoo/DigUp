@@ -176,7 +176,7 @@ function folderBox(row) {
   const disclosure = element("button", "disclosure" + (isOpen ? " open" : ""));
   disclosure.innerHTML = CHEVRON;
   disclosure.disabled = !subfolders.length;
-  disclosure.title = isOpen ? "Hide its subfolders" : "Choose among its subfolders";
+  disclosure.title = t(isOpen ? "Hide its subfolders" : "Choose among its subfolders");
   disclosure.onclick = (event) => {
     event.stopPropagation();
     if (open.has(key(row))) open.delete(key(row)); else open.add(key(row));
@@ -193,7 +193,7 @@ function folderBox(row) {
   if (answer?.failed) text.append(element("div", "counts", "Couldn't look inside it; it can still be searched."));
   else if (answer?.readable === false) text.append(element("div", "counts problem", "Can't read it"));
   else if (part && Object.values(part.files).some((count) => count > 0)) text.append(element("div", "counts", countsText(part.files)));
-  else text.append(element("div", "path", answer ? (Object.keys(answer.files || {}).length ? "Nothing to search in the subfolders checked" : codeMode ? "No code here" : "Nothing DigUp searches in it") : native(row)));
+  else text.append(element("div", "path", answer ? t(Object.keys(answer.files || {}).length ? "Nothing to search in the subfolders checked" : codeMode ? "No code here" : "Nothing DigUp searches in it") : native(row)));
   header.append(disclosure, check, text);
   if (answer && !answer.failed && answer.readable !== false && calibrated) header.append(timeOf(part, mark === "off"));
   else if (!answer) header.append(element("div", "time", "…"));
@@ -253,15 +253,15 @@ function checkbox(mark, action) {
 function timeOf(part, quiet, small) {
   const time = element("div", "time");
   const seconds = part?.seconds || 0;
-  time.textContent = seconds < 1 ? (small ? "" : "—") : `about ${roughDuration(seconds)}`;
+  time.textContent = seconds < 1 ? (small ? "" : "—") : t(`about ${roughDuration(seconds)}`);
   if (codeMode) {
     if (!small && (part?.bytes || 0) > 0) time.append(element("small", "", roughBytes(part.bytes)));
-    time.title = "How long reading this code takes, once, and about how much room its index needs. After that, only "
-      + "what changes is read again.";
+    time.title = t("How long reading this code takes, once, and about how much room its index needs. After that, only "
+      + "what changes is read again.");
   } else {
     if (!small && (part?.later || 0) >= 30) time.append(element("small", "", `+ ${roughDuration(part.later)} later`));
-    time.title = "How long the first pass takes on this computer. Long PDFs and documents get their first pages in it, "
-      + "and the rest afterwards.";
+    time.title = t("How long the first pass takes on this computer. Long PDFs and documents get their first pages in it, "
+      + "and the rest afterwards.");
   }
   if (quiet) time.classList.add("quiet");
   return time;
@@ -270,14 +270,14 @@ function timeOf(part, quiet, small) {
 /// "1,204 pictures · 37 PDFs · 12 documents · 3 videos"
 function countsText(files) {
   const part = (count, one, many) => (count > 0 ? `${count.toLocaleString()} ${count === 1 ? one : many}` : null);
-  if (codeMode) return part(files.code, "file of code", "files of code") || "No code here";
+  if (codeMode) return t(part(files.code, "file of code", "files of code") || "No code here");
   return [
     part((files.image || 0) + (files.screenshot || 0), "picture", "pictures"),
     part(files.pdf, "PDF", "PDFs"),
     part(files.doc, "document", "documents"),
     part(files.audio, "recording", "recordings"),
     part(files.video, "video", "videos"),
-  ].filter(Boolean).join(" · ") || "Nothing DigUp searches in it";
+  ].filter(Boolean).map(t).join(" · ") || t("Nothing DigUp searches in it");
 }
 
 /// "360 KB", "12 MB": an index's size, roughly.
@@ -289,9 +289,9 @@ function roughBytes(count) {
 
 /// "45 s", "4 min", "1.5 h": the precision an estimate deserves (the Mac app's roughDuration).
 function roughDuration(seconds) {
-  if (seconds < 90) return `${Math.round(seconds)} s`;
-  if (seconds < 5400) return `${Math.round(seconds / 60)} min`;
-  return `${(seconds / 3600).toFixed(1)} h`;
+  if (seconds < 90) return t(`${Math.max(1, Math.round(seconds))} s`);
+  if (seconds < 5400) return t(`${Math.round(seconds / 60)} min`);
+  return t(`${(seconds / 3600).toFixed(1)} h`);
 }
 
 $("add-folder").addEventListener("click", async () => {
@@ -362,8 +362,8 @@ async function estimateCode() {
 function render() {
   PAGES.forEach((name, index) => { $(name).hidden = index !== page; });
   $("back").hidden = firstTime ? page === 0 || page === PAGES.length - 1 : false;
-  $("back").textContent = firstTime ? "Back" : "Cancel";
-  $("next").textContent = !firstTime ? "Save" : page === PAGES.length - 1 ? "Done" : "Continue";
+  $("back").textContent = t(firstTime ? "Back" : "Cancel");
+  $("next").textContent = t(!firstTime ? "Save" : page === PAGES.length - 1 ? "Done" : "Continue");
   $("next").disabled = page === 1 && !selection.folders().length;
   $("model").hidden = codeMode || page === 0 || page === PAGES.length - 1;
   renderFooter();
@@ -394,7 +394,7 @@ function renderFooter() {
     summary = !codeChosen.size ? "Code search stays off for now"
       : `Reading the code: about ${roughDuration(Math.max(1, seconds))}, an index of about ${roughBytes(size)}`;
   }
-  $("summary").textContent = summary;
+  $("summary").textContent = t(summary);
 }
 
 $("next").addEventListener("click", async () => {
@@ -406,7 +406,7 @@ $("next").addEventListener("click", async () => {
       await invoke(codeMode ? "set_code_folders" : "apply_setup_folders",
                    { folders: selection.folders().map(native), skipped: selection.skips().map(native) });
     } catch (error) {
-      $("summary").textContent = String(error);
+      $("summary").textContent = t(String(error));
       $("next").disabled = false;
       return;
     }
@@ -422,7 +422,7 @@ $("next").addEventListener("click", async () => {
       try {
         await invoke("set_code_folders", { folders: folders.map(native), skipped: [] });
       } catch (error) {
-        $("summary").textContent = String(error);
+        $("summary").textContent = t(String(error));
         $("next").disabled = false;
         return;
       }
@@ -433,7 +433,7 @@ $("next").addEventListener("click", async () => {
     try {
       await invoke("finish_setup");
     } catch (error) {
-      $("progress-note").textContent = String(error);
+      $("progress-note").textContent = t(String(error));
       $("next").disabled = false;
     }
     return;
@@ -474,7 +474,13 @@ function renderProgress() {
   const { state, model } = progress;
   const what = $("progress-what"), left = $("progress-left"), bar = $("bar"), fill = $("bar-fill");
   let fraction = null, busy = false, done = false, label = "", time = "", note = "";
-  if (model.state === "downloading") {
+  if (model.state === "checking") {
+    label = "Checking the model…";
+    busy = true;
+  } else if (model.repair) {
+    label = "Model verification failed. Repair the installation.";
+    note = "Bundled models are missing or corrupt. Repair the installation.";
+  } else if (model.state === "downloading") {
     label = "Downloading the model";
     fraction = model.total ? model.bytes / model.total : 0;
     const rate = downloadRate();
@@ -515,11 +521,11 @@ function renderProgress() {
     label = "Looking at your folders";
     busy = true;
   }
-  what.textContent = label;
-  left.textContent = time;
+  what.textContent = t(label);
+  left.textContent = time.split(" · ").map(t).join(" · ");
   bar.className = "bar" + (busy ? " busy" : "") + (done ? " done" : "");
   fill.style.width = busy || done ? "" : `${Math.round(100 * Math.max(0, Math.min(1, fraction ?? 0)))}%`;
-  $("progress-note").textContent = note;
+  $("progress-note").textContent = t(note);
 }
 
 /// The download's bytes a second over the last few seconds.
@@ -599,7 +605,7 @@ function showModel(model) {
       : "Downloading the model…";
     if (model.problem) text += ` (${model.problem}, trying again)`;
   }
-  $("model").textContent = text;
+  $("model").textContent = t(model.repair ? "Bundled models are missing or corrupt. Repair the installation." : text);
   if (PAGES[page] === "ready") renderProgress();
 }
 
@@ -614,7 +620,7 @@ function showKeys(hotkey) {
   const keys = isMac ? [...hotkey.replace(/[^⌃⌥⇧⌘]/g, "")].concat(hotkey.replace(/[⌃⌥⇧⌘]/g, "")) : hotkey.split("+");
   $("keys").replaceChildren(...keys.filter(Boolean).map((key) => element("span", "key", key)));
   $("reveal-key").textContent = isMac ? "⌘↩" : "Ctrl+↩";
-  $("reveal-text").textContent = isMac ? "shows it in Finder" : isWindows ? "shows it in Explorer" : "shows it in its folder";
+  $("reveal-text").textContent = t(isMac ? "shows it in Finder" : isWindows ? "shows it in Explorer" : "shows it in its folder");
 }
 
 /// Where the shortcut lives on a desktop that keeps it itself (GNOME, KDE), or the command to give it (other Wayland
@@ -629,7 +635,7 @@ function showShortcut(shortcut) {
   };
   const note = notes[shortcut?.method];
   $("shortcut-note").hidden = !note;
-  $("shortcut-note").textContent = note || "";
+  $("shortcut-note").textContent = t(note || "");
   $("shortcut-command").hidden = shortcut?.method !== "by_hand";
   $("shortcut-command").textContent = shortcut?.command || "";
   $("change-shortcut").hidden = shortcut?.method !== "grab";
@@ -641,7 +647,7 @@ $("change-shortcut").addEventListener("click", () => {
   $("recording").hidden = false;
   recordShortcut((text) => { $("recording").textContent = text; }, (shown, problem) => {
     if (shown) showKeys(shown);
-    $("recording").textContent = problem || "";
+    $("recording").textContent = t(problem || "");
     $("recording").hidden = !problem;
     $("change-shortcut").hidden = false;
   });
@@ -650,11 +656,12 @@ $("change-shortcut").addEventListener("click", () => {
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text != null) node.textContent = text;
+  if (text != null) node.textContent = ["name", "path", "key"].includes(className) ? text : t(text);
   return node;
 }
 
 async function start() {
+  await I18n.ready;
   info = await invoke(codeMode ? "code_setup_info" : "setup_info");
   firstTime = !info.setUp;
   if (firstTime && info.codeOffered?.length) {
@@ -662,10 +669,10 @@ async function start() {
     estimateCode();
   }
   if (codeMode) {
-    $("folders").querySelector("h2").textContent = "Which code should DigUp search?";
-    $("folders-subtitle").textContent = "Pick the folders with your code, and open one to leave out some of its "
+    $("folders").querySelector("h2").textContent = t("Which code should DigUp search?");
+    $("folders-subtitle").textContent = t("Pick the folders with your code, and open one to leave out some of its "
       + "repositories. DigUp reads what git keeps (not dependencies or build output) into an index of its own, so "
-      + "code shows up only when you search for code.";
+      + "code shows up only when you search for code.");
   }
   progress.state = info.state || {};
   // The usual folders, then any chosen before (a chosen subfolder of a folder listed shows inside it). On a first
@@ -699,3 +706,18 @@ async function start() {
 }
 
 start();
+I18n.onChange(() => {
+  if (!info.hotkey && !codeMode) return;
+  renderFolders();
+  render();
+  showModel(progress.model);
+  if (!codeMode) {
+    showKeys(info.hotkey);
+    showShortcut(info.shortcut);
+  } else {
+    $("folders").querySelector("h2").textContent = t("Which code should DigUp search?");
+    $("folders-subtitle").textContent = t("Pick the folders with your code, and open one to leave out some of its "
+      + "repositories. DigUp reads what git keeps (not dependencies or build output) into an index of its own, so "
+      + "code shows up only when you search for code.");
+  }
+});

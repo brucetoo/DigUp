@@ -32,6 +32,7 @@ let usage = """
                                               see SearchService): for shells that can't link DigUpKit
       digup download-model [--to DIR]         the model files, from the Hugging Face cache or downloaded with
                                               resume, checked (JSON lines: see DownloadModel)
+      digup verify-models --to DIR            verify both pinned models locally, without network access
 
     Options:
       --index DIR          index folder (default: DigUp's Application Support folder; see `digup status`)
@@ -723,6 +724,11 @@ do {
     case "worker": exit(workerService(args))
     case "search-service": exit(try searchService(args))
     case "download-model": exit(try downloadModel(args))
+    case "verify-models":
+        guard let path = args.values["--to"] else { throw CLIError("verify-models requires --to DIR") }
+        print("{\"event\":\"verifying\"}")
+        try ModelFiles.verify(in: Arguments.folderURL(path))
+        print("{\"event\":\"ready\"}")
     default:
         print(usage)
         exit(2)

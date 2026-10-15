@@ -14,12 +14,18 @@ on:
       ref:
         description: Branch or tag to build
         default: main
+      platform:
+        description: Platform to build
+        type: choice
+        options: [windows, all]
+        default: windows
 
 permissions:
   contents: read
 
 jobs:
   linux:
+    if: inputs.platform == 'all'
     # Built in an Ubuntu 22.04 container: the binaries then ask for glibc 2.35 at most and start on Ubuntu 22.04, Debian 12,
     # Mint 21 and anything newer (built on 24.04 they'd need its 2.39). GitHub is retiring its ubuntu-22.04 runners.
     runs-on: ubuntu-24.04
@@ -202,6 +208,7 @@ jobs:
           scripts/fetch-vendor.sh
           scripts/build-llama.sh
           scripts/package-windows.sh
+          cargo test --manifest-path shell/src-tauri/Cargo.toml
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -217,4 +224,4 @@ jobs:
           key: embeddinggemma-2-q8_0-bfcd298-windows
       - name: The installer
         shell: bash
-        run: MODELS="$PWD/models" scripts/check-windows-package.sh shell/src-tauri/target/release/bundle/nsis/*-setup.exe
+        run: scripts/check-windows-package.sh shell/src-tauri/target/release/bundle/nsis/*-setup.exe

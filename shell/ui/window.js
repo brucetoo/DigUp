@@ -151,9 +151,9 @@ function render() {
 function renderBar() {
   const code = isCode();
   $("glass").innerHTML = code ? ICONS.code : SEARCH_ICON;
-  $query.placeholder = state.filter === "code" ? "Describe the code: “retry a request with backoff”, a name in it…"
+  $query.placeholder = t(state.filter === "code" ? "Describe the code: “retry a request with backoff”, a name in it…"
     : state.info.hasCode ? "Describe it: “zebra in a video”, “code: retry with backoff”…"
-    : "Describe it: “receipt from the hardware store”, “zebra in a video”…";
+    : "Describe it: “receipt from the hardware store”, “zebra in a video”…");
   $kinds.replaceChildren();
   $kinds.append(chip("All", null, null, state.filter === null && !code, () => setFilter(null), 1));
   FILTERS.forEach((filter, index) => {
@@ -172,9 +172,9 @@ function renderBar() {
 function chip(title, icon, count, selected, action, number) {
   const button = element("button", "chip" + (selected ? " selected" : ""));
   if (icon) button.insertAdjacentHTML("beforeend", ICONS[icon]);
-  button.append(title);
+  button.append(t(title));
   if (count != null && state.query.trim()) button.append(element("span", "number", count.toLocaleString()));
-  button.title = `${title} (${MOD}${number})`;
+  button.title = `${t(title)} (${MOD}${number})`;
   button.setAttribute("aria-pressed", String(selected));
   button.onclick = action;
   return button;
@@ -215,7 +215,7 @@ function cell(hit) {
   const item = element("div", "cell" + (hit.path === state.selection ? " selected" : ""));
   item.dataset.path = hit.path;
   item.setAttribute("role", "option");
-  item.setAttribute("aria-label", `${KIND_TITLE[hit.kind] || "File"}, ${nameOf(hit.path)}, ${reasonOf(hit)}`);
+  item.setAttribute("aria-label", `${t(KIND_TITLE[hit.kind] || "File")}, ${nameOf(hit.path)}, ${reasonOf(hit)}`);
   const picture = element("div", "picture");
   picture.append(cellPicture(hit));
   if (hit.kind !== "image" && hit.kind !== "screenshot") {
@@ -287,7 +287,7 @@ function weakerToggle() {
   const count = state.weaker.length;
   const toggle = element("button", "weaker-toggle" + (state.showWeaker ? " open" : ""));
   toggle.innerHTML = ICONS.chevron;
-  toggle.append(state.showWeaker ? "Weaker matches" : `${count} weaker ${count === 1 ? "match" : "matches"}`);
+  toggle.append(t(state.showWeaker ? "Weaker matches" : `${count} weaker ${count === 1 ? "match" : "matches"}`));
   toggle.onmousedown = (event) => event.preventDefault();
   toggle.onclick = () => {
     state.showWeaker = !state.showWeaker;
@@ -427,10 +427,10 @@ function home() {
   for (const [text, kind] of shown) {
     const example = element("button", "example");
     example.innerHTML = ICONS[FILTERS.find((filter) => filter.key === kind)?.icon ?? kind];
-    example.append(text);
-    example.title = `Search for “${text}”`;
+    example.append(t(text));
+    example.title = t(`Search for “${t(text)}”`);
     example.onmousedown = (event) => event.preventDefault();
-    example.onclick = () => setQuery(text);
+    example.onclick = () => setQuery(t(text));
     examples.append(example);
   }
   box.append(brandMark(), element("h1", "", "Describe it. Dig it up."),
@@ -459,7 +459,7 @@ function about() {
     line.append(counts, element("span", "", `in ${folderNames()}`));
     box.append(line);
   } else if (state.app.searchable > 0) {
-    box.append(element("div", "line", `${state.app.searchable.toLocaleString()} files to search in ${folderNames()}`));
+    box.append(element("div", "line", t(`${state.app.searchable.toLocaleString()} files to search in ${folderNames()}`)));
   }
   if (state.info.hotkey) {
     const line = element("div", "line");
@@ -474,13 +474,13 @@ function about() {
 /// "1 screenshot", "25 PDFs", "6 audio files"
 function counted(kind, count) {
   const [one, many] = COUNTED[kind] || ["file", "files"];
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+  return t(`${count.toLocaleString()} ${count === 1 ? one : many}`);
 }
 
 /// "Pictures, Documents and Videos", or "5 folders".
 function folderNames() {
   const names = state.info.folders.map((folder) => folder.split(/[\\/]/).filter(Boolean).pop() || folder);
-  return names.length <= 3 ? new Intl.ListFormat("en", { type: "conjunction" }).format(names) : `${names.length} folders`;
+  return names.length <= 3 ? new Intl.ListFormat(I18n.language, { type: "conjunction" }).format(names) : t(`${names.length} folders`);
 }
 
 /// "Ctrl+Shift+Space" as keys; a Mac's "⇧⌘Space" too.
@@ -603,7 +603,7 @@ function previewPicture(hit) {
     // ▶ plays it here from the moment that matched.
     const play = element("button", "play");
     play.innerHTML = ICONS.play;
-    play.title = `Play from ${clock(hit.loc ?? 0)}`;
+    play.title = t(`Play from ${clock(hit.loc ?? 0)}`);
     play.onclick = () => {
       const video = element("video");
       video.src = `${fileURL(hit.path)}#t=${hit.loc ?? 0}`;
@@ -650,7 +650,7 @@ function renderBig() {
   const opening = element("button", "primary", "Open");
   opening.onclick = () => { closeBig(); open(hit); };
   const close = element("button", "close", "×");
-  close.title = "Close (Space)";
+  close.title = t("Close (Space)");
   close.onclick = closeBig;
   head.append(title, opening, close);
   sheet.append(head, bigView(hit));
@@ -714,7 +714,7 @@ function momentBar(start, end, duration, playhead) {
     head.style.left = `${Math.max(0, Math.min(1, playhead / duration)) * 100}%`;
     bar.append(head);
   }
-  bar.title = `At ${clock(start)} of ${clock(duration)}`;
+  bar.title = t(`At ${clock(start)} of ${clock(duration)}`);
   return bar;
 }
 
@@ -728,9 +728,9 @@ function audioMoment(hit) {
   wave.innerHTML = ICONS.audio;
   const toggle = element("button", "toggle play-icon");
   toggle.innerHTML = ICONS.play;
-  toggle.title = `Play from ${clock(start)}`;
+  toggle.title = t(`Play from ${clock(start)}`);
   controls.append(wave, toggle);
-  const line = element("div", "span", `${clock(start)} – ${clock(end)}` + (duration ? ` of ${clock(duration)}` : ""));
+  const line = element("div", "span", `${clock(start)} – ${clock(end)}` + (duration ? t(` of ${clock(duration)}`) : ""));
   let bar = duration > 0 ? momentBar(start, end, duration) : null;
   box.append(controls, ...(bar ? [bar] : []), line);
   const showPlaying = () => {
@@ -742,7 +742,7 @@ function audioMoment(hit) {
     if (!playing) {
       const audio = new Audio(`${fileURL(hit.path)}#t=${start}`);
       audio.ontimeupdate = () => {
-        line.textContent = `${clock(audio.currentTime)} – playing from ${clock(start)}`;
+        line.textContent = t(`${clock(audio.currentTime)} – playing from ${clock(start)}`);
         if (bar) {
           const moved = momentBar(start, end, duration, audio.currentTime);
           bar.replaceWith(moved);
@@ -822,7 +822,7 @@ function facts(hit) {
   const title = element("div", "title", "‎" + nameOf(hit.path));
   title.title = nameOf(hit.path);
   const folder = folderLine(folderOf(hit), "button");
-  folder.title = `Show in ${FILE_MANAGER}`;
+  folder.title = t(`Show in ${FILE_MANAGER}`);
   folder.onclick = () => reveal(hit);
   box.append(title, folder, element("div", "details", details(hit)));
   return box;
@@ -874,7 +874,7 @@ function renderStatus() {
     count = app.caveat || (!state.meaning ? "Words only: meaning search isn't available"
       : `${strong} ${strong === 1 ? "result" : "results"}` + (weaker ? ` · ${weaker} weaker` : ""));
   }
-  $("count").textContent = count;
+  $("count").textContent = t(count);
   renderUpdate(app.update);
 }
 
@@ -965,7 +965,7 @@ $("toggle-preview").onclick = () => {
 };
 $("settings").onmousedown = (event) => event.preventDefault();
 $("settings").onclick = () => invoke("open_settings").catch(failed);
-$("settings").title = `Settings (${MOD},)`;
+$("settings").title = t(`Settings (${MOD},)`);
 $("more").onmousedown = (event) => event.preventDefault();
 $("more").onclick = () => ($menu.hidden ? showMainMenu() : hideMenu());
 $("status-line").onclick = () => invoke("choose_folders").catch(failed);
@@ -975,7 +975,7 @@ $kinds.onmousedown = (event) => event.preventDefault();
 function updatePreviewButton() {
   const button = $("toggle-preview");
   button.setAttribute("aria-pressed", String(state.showsPreview));
-  button.title = state.showsPreview ? "Hide Preview" : "Show Preview";
+  button.title = t(state.showsPreview ? "Hide Preview" : "Show Preview");
   button.setAttribute("aria-label", button.title);
 }
 
@@ -1071,6 +1071,10 @@ document.addEventListener("keydown", (event) => {
 tauri.event.listen("state", ({ payload }) => {
   const before = state.app;
   state.app = payload;
+  if (payload.model?.state === "ready" && before.model?.state !== "ready") {
+    if (state.query.trim()) run();
+    loadIndexed();
+  }
   // Code search turned on or off (Settings): the Code chip, the examples, a code: search.
   if (payload.hasCode != null && payload.hasCode !== state.info.hasCode) {
     state.info.hasCode = payload.hasCode;
@@ -1123,6 +1127,7 @@ function loadIndexed() {
 }
 
 async function start() {
+  await I18n.ready;
   const info = await invoke("window_info");
   state.info = { ...state.info, ...info };
   state.app = info.state || {};
@@ -1196,3 +1201,10 @@ function report() {
 }
 
 start();
+I18n.onChange(() => {
+  hideMenu();
+  updatePreviewButton();
+  $("settings").title = t(`Settings (${MOD},)`);
+  render();
+  if (!$big.hidden) renderBig();
+});

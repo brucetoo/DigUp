@@ -1,0 +1,5 @@
+"NSAppleEventsUsageDescription" = "DigUp 请求 QuickTime Player 在搜索匹配的时刻打开录制内容。";
+"NSDesktopFolderUsageDescription" = "DigUp 仅索引你选择的文件夹，让你通过内容描述搜索文件。所有数据保留在本机。";
+"NSDocumentsFolderUsageDescription" = "DigUp 仅索引你选择的文件夹，让你通过内容描述搜索文件。所有数据保留在本机。";
+"NSDownloadsFolderUsageDescription" = "DigUp 仅索引你选择的文件夹，让你通过内容描述搜索文件。所有数据保留在本机。";
+"NSRemovableVolumesUsageDescription" = "DigUp 仅索引你选择的文件夹，让你通过内容描述搜索文件。所有数据保留在本机。";

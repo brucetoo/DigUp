@@ -40,6 +40,7 @@ const state = {
   error: null,
   indexing: null,        // {done, total} while the index helper works through new files
   caveat: null,          // why results may be incomplete right now (the shell's status.rs)
+  modelState: null,
 };
 let debugPending = false;
 
@@ -190,12 +191,12 @@ function renderList() {
   $list.hidden = nothing;
   if (nothing) return;
   for (const group of state.groups) {
-    $list.append(element("div", "group-title", group.title));
+    $list.append(element("div", "group-title", t(group.title)));
     for (const hit of group.rows) $list.append(row(hit));
     // More of this kind than the panel has room for: all of them in the window.
     if (group.total > group.rows.length && FILTER_OF[group.title]) {
       const more = element("div", "more", `Show all ${group.total} ${group.title.toLowerCase()}…`);
-      more.title = `Open them in the DigUp window (${MOD}O shows everything)`;
+      more.title = t(`Open them in the DigUp window (${MOD}O shows everything)`);
       more.onclick = () => openInWindow(FILTER_OF[group.title]);
       $list.append(more);
     }
@@ -204,7 +205,7 @@ function renderList() {
     const fold = element("div", "weaker" + (state.showWeaker ? " open" : "") + (state.selection === WEAKER ? " selected" : ""));
     fold.innerHTML = ICONS.chevron;
     const count = state.weaker.length;
-    fold.append(state.showWeaker ? "Weaker matches" : `${count} weaker ${count === 1 ? "match" : "matches"}`);
+    fold.append(t(state.showWeaker ? "Weaker matches" : `${count} weaker ${count === 1 ? "match" : "matches"}`));
     fold.onclick = toggleWeaker;
     $list.append(fold);
     if (state.showWeaker) for (const hit of state.weaker) $list.append(row(hit));
@@ -375,8 +376,8 @@ function renderFooter() {
   // Results while indexing (or before the model is in) may be missing some: that, where they're counted.
   else if (state.caveat && !state.isCode) summary = state.caveat;
   else summary = `${strong} ${strong === 1 ? "result" : "results"}` + (weaker ? ` · ${weaker} weaker` : "");
-  $summary.textContent = summary;
-  $keys.textContent = `↩ Open   ${MOD}↩ Show in ${FILE_MANAGER}   ␣ Preview`;
+  $summary.textContent = t(summary);
+  $keys.textContent = t(`↩ Open   ${MOD}↩ Show in ${FILE_MANAGER}   ␣ Preview`);
 }
 
 // MARK: The big preview (Space, as Quick Look on the Mac)
@@ -498,9 +499,12 @@ tauri.event.listen("helper", ({ payload }) => {
 /// Indexing and the model, from the shell: a badge beside the field while results may be incomplete ("Indexing 42%"),
 /// as the Mac's panel has, with its progress as a ring.
 function showState(app) {
+  const becameReady = app.model?.state === "ready" && state.modelState !== "ready";
+  state.modelState = app.model?.state;
   state.indexing = app.indexing || null;
   state.hasCode = app.hasCode !== false;
   state.caveat = app.caveat || null;
+  if (becameReady && $query.value.trim()) queryChanged();
   $activity.hidden = !app.badge;
   if (app.badge) {
     const length = 2 * Math.PI * 4.6, done = Math.max(0.02, Math.min(1, app.progress ?? 0));
@@ -515,7 +519,7 @@ function showState(app) {
 }
 
 tauri.event.listen("state", ({ payload }) => showState(payload));
-invoke("app_state").then(showState).catch(() => {});
+I18n.ready.then(() => invoke("app_state")).then(showState).catch(() => {});
 
 // Debug runs (--debug-query): type the query in, and once the meaning results and their pictures are in, report
 // what the panel shows.
@@ -525,7 +529,7 @@ function debugSearch(query) {
   $query.value = query;
   queryChanged();
 }
-invoke("debug_query").then(debugSearch);
+I18n.ready.then(() => invoke("debug_query")).then(debugSearch);
 tauri.event.listen("debug-query", ({ payload }) => debugSearch(payload));   // after setup's first index
 
 function report() {
@@ -555,3 +559,8 @@ function report() {
     }).catch(() => {});
   }, 1500);
 }
+
+I18n.onChange(() => {
+  render();
+  invoke("app_state").then(showState).catch(() => {});
+});

@@ -19,6 +19,25 @@ enum Brand {
     static let wash = LinearGradient(colors: [sprout, leaf], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
+struct AboutView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 80, height: 80)
+            Text("DigUp").font(.title.bold())
+            Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+                .foregroundStyle(.secondary)
+            Text(L10n.tr("Describe it. Dig it up.")).font(.headline)
+            Text(L10n.tr("DigUp \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · EmbeddingGemma 2 by Google (Apache 2.0), run by llama.cpp (MIT)."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            LanguagePicker().fixedSize()
+        }
+        .padding(28)
+        .frame(width: 380)
+    }
+}
+
 /// ⇧ ⌘ Space as keycaps.
 struct Keycaps: View {
     let caps: [String]
@@ -87,7 +106,7 @@ struct MomentBar: View {
             }
         }
         .frame(height: 4)
-        .accessibilityLabel("At \(ResultRow.clock(start)) of \(ResultRow.clock(duration))")
+        .accessibilityLabel(L10n.tr("At \(ResultRow.clock(start)) of \(ResultRow.clock(duration))"))
     }
 }
 
@@ -132,16 +151,16 @@ extension FileKind {
     /// "1 screenshot", "25 PDFs", "6 audio files"
     func counted(_ count: Int) -> String {
         let one = count == 1
-        let noun = switch self {
-        case .screenshot: one ? "screenshot" : "screenshots"
-        case .image: one ? "image" : "images"
-        case .pdf: one ? "PDF" : "PDFs"
-        case .doc: one ? "document" : "documents"
-        case .audio: one ? "audio file" : "audio files"
-        case .video: one ? "video" : "videos"
-        case .code: one ? "code file" : "code files"
+        let value = L10n.number(count)
+        switch self {
+        case .screenshot: return one ? L10n.tr("\(value) screenshot") : L10n.tr("\(value) screenshots")
+        case .image: return one ? L10n.tr("\(value) image") : L10n.tr("\(value) images")
+        case .pdf: return one ? L10n.tr("\(value) PDF") : L10n.tr("\(value) PDFs")
+        case .doc: return one ? L10n.tr("\(value) document") : L10n.tr("\(value) documents")
+        case .audio: return one ? L10n.tr("\(value) audio file") : L10n.tr("\(value) audio files")
+        case .video: return one ? L10n.tr("\(value) video") : L10n.tr("\(value) videos")
+        case .code: return one ? L10n.tr("\(value) code file") : L10n.tr("\(value) code files")
         }
-        return "\(count.formatted()) \(noun)"
     }
 }
 
@@ -194,11 +213,11 @@ struct ShortcutRecorder: View {
             Button { setRecording(!recording) } label: {
                 Group {
                     if recording {
-                        Text("Press the new shortcut…").foregroundStyle(.secondary)
+                        Text(L10n.tr("Press the new shortcut…")).foregroundStyle(.secondary)
                     } else if let combo {
                         Keycaps(caps: combo.caps, size: capSize)
                     } else {
-                        Text("Click to set a shortcut").foregroundStyle(.secondary)
+                        Text(L10n.tr("Click to set a shortcut")).foregroundStyle(.secondary)
                     }
                 }
                 .font(.system(size: 13))
@@ -213,8 +232,8 @@ struct ShortcutRecorder: View {
             }
             .buttonStyle(.plain)
             .background(KeyCatcher(active: recording, onKey: handle, onResign: { setRecording(false) }))
-            .accessibilityLabel(recording ? "Recording a new shortcut" : "Shortcut \(combo?.display ?? "none"), click to change")
-            Text(problem ?? (recording ? "Esc cancels" : "Click to change"))
+            .accessibilityLabel(recording ? L10n.tr("Recording a new shortcut") : L10n.tr("Shortcut \(combo?.display ?? L10n.tr("none")), click to change"))
+            Text(problem.map(L10n.resolve) ?? (recording ? L10n.tr("Esc cancels") : L10n.tr("Click to change")))
                 .font(.system(size: 11))
                 .foregroundStyle(problem == nil ? AnyShapeStyle(.tertiary) : AnyShapeStyle(Color.red))
                 .multilineTextAlignment(.center)

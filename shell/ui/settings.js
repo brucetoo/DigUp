@@ -28,7 +28,7 @@ let removingCode = null;     // the code folder whose removal is being confirmed
 // MARK: Tabs
 
 function showTab(name) {
-  for (const button of document.querySelectorAll("#tabs button")) {
+  for (const button of document.querySelectorAll('#tabs [role="tab"]')) {
     button.setAttribute("aria-selected", String(button.dataset.tab === name));
   }
   for (const tab of document.querySelectorAll(".tab")) tab.hidden = tab.id !== name;
@@ -36,7 +36,7 @@ function showTab(name) {
   if (name === "code") loadCodeSummaries();
 }
 
-for (const button of document.querySelectorAll("#tabs button")) button.onclick = () => showTab(button.dataset.tab);
+for (const button of document.querySelectorAll('#tabs [role="tab"]')) button.onclick = () => showTab(button.dataset.tab);
 
 // MARK: General
 
@@ -50,7 +50,7 @@ function renderGeneral() {
   $("keys").replaceChildren(...info.hotkey.split("+").filter(Boolean).map((key) => element("span", "key", key)));
   const note = notes[info.shortcut.method];
   $("shortcut-note").hidden = !note;
-  $("shortcut-note").textContent = note || "";
+  $("shortcut-note").textContent = t(note || "");
   $("shortcut-command").hidden = info.shortcut.method !== "by_hand";
   $("shortcut-command").textContent = info.shortcut.command;
   $("change-shortcut").hidden = info.shortcut.method !== "grab" || recording;
@@ -61,9 +61,7 @@ function renderGeneral() {
 /// Updates: the daily check, and this version or the one waiting (updates.rs).
 function renderUpdates() {
   $("update-checks").checked = info.updateChecks;
-  $("update-info").textContent = "Once a day DigUp asks GitHub for its newest version; nothing about your files is sent. "
-    + (info.installsUpdates ? "Updates install with one click."
-      : "A new version is downloaded from its release page and installed as this one was.");
+  $("update-info").textContent = t("Automatic updates are disabled. Download updates from brucetoo/DigUp releases.");
   const update = info.state && info.state.update;
   const version = $("update-version");
   version.classList.toggle("available", Boolean(update));
@@ -138,9 +136,9 @@ function renderStatus() {
   const parts = [`${(state.searchable || 0).toLocaleString()} of ${(state.files || 0).toLocaleString()} files searchable`];
   if (state.pending) parts.push(`${state.pending.toLocaleString()} waiting`);
   if (state.unfinished) parts.push(`${state.unfinished.toLocaleString()} long ${state.unfinished === 1 ? "file" : "files"} to finish`);
-  $("status-detail").textContent = parts.join(" · ");
+  $("status-detail").textContent = parts.map(t).join(" · ");
   $("pause").hidden = !info.folders?.length;
-  $("pause").textContent = state.paused ? "Resume" : "Pause";
+  $("pause").textContent = t(state.paused ? "Resume" : "Pause");
 }
 
 $("pause").onclick = () => invoke("pause_indexing", { paused: !(info.state || {}).paused }).catch(fail);
@@ -207,7 +205,7 @@ function folderRow(folder, summary, code = false) {
       summary.unfinished ? `${summary.unfinished.toLocaleString()} long ${summary.unfinished === 1 ? "file" : "files"} to finish` : null,
       summary.skipped ? `${summary.skipped.toLocaleString()} skipped` : null,
       summary.failed ? `${summary.failed.toLocaleString()} couldn't be read` : null,
-    ].filter(Boolean).join(" · ");
+    ].filter(Boolean).map(t).join(" · ");
     if (states) side.append(element("div", "states", states));
   }
   row.append(text, side, removeButton(code ? "Stop searching the code in this folder" : "Stop searching this folder", () => {
@@ -228,7 +226,8 @@ function confirmRemoval(folder, summary, code = false) {
   const files = summary ? `Its ${summary.files.toLocaleString()} ${summary.files === 1 ? "file leaves" : "files leave"}` : "Its files leave";
   const last = code && (info.code?.folders || []).length === 1;
   box.append(element("p", "", code
-    ? `Stop searching the code in “${nameOf(folder)}”? ${files} the code index.${last ? " That turns code search off." : ""}`
+    ? t(`Stop searching the code in “${nameOf(folder)}”?`) + " " + t(`${files} the code index.`)
+      + (last ? " " + t("That turns code search off.") : "")
     : `Stop searching “${nameOf(folder)}”? ${files} the index. Adding it back later indexes them again.`));
   const actions = element("div", "actions");
   const cancel = element("button", "", "Cancel");
@@ -254,8 +253,8 @@ function confirmRemoval(folder, summary, code = false) {
 
 function removeButton(title, action) {
   const button = element("button", "remove", "−");
-  button.title = title;
-  button.setAttribute("aria-label", title);
+  button.title = t(title);
+  button.setAttribute("aria-label", t(title));
   button.onclick = action;
   return button;
 }
@@ -326,11 +325,11 @@ function renderCode() {
     for (const name of Object.keys(total)) total[name] += summary[name] || 0;
   }
   $("code-status").hidden = !on || codeSummaries == null;
-  $("code-status-line").textContent = total.pending
+  $("code-status-line").textContent = t(total.pending
     ? `Reading code: ${total.indexed.toLocaleString()} of ${total.files.toLocaleString()} files`
-    : `${total.indexed.toLocaleString()} ${total.indexed === 1 ? "file" : "files"} of code searchable`;
+    : `${total.indexed.toLocaleString()} ${total.indexed === 1 ? "file" : "files"} of code searchable`);
   const size = info.storage?.codeBytes;
-  $("code-status-detail").textContent = size ? `The code index takes ${bytes(size)}` : "";
+  $("code-status-detail").textContent = t(size ? `The code index takes ${bytes(size)}` : "");
 
   const rows = $("code-rows");
   rows.replaceChildren();
@@ -340,7 +339,7 @@ function renderCode() {
     rows.append(folderRow(folder, summary, true));
     if (removingCode && samePath(removingCode, folder)) rows.append(confirmRemoval(folder, summary, true));
   }
-  $("add-code").textContent = on ? "Add Folders…" : "Choose Code Folders…";
+  $("add-code").textContent = t(on ? "Add Folders…" : "Choose Code Folders…");
 
   const select = $("code-editor");
   const options = [...code.editors, { id: "default", name: "The file's default app" }];
@@ -364,8 +363,8 @@ $("code-editor").addEventListener("change", async () => {
 });
 $("code-off").onclick = () => {
   const size = info.storage?.codeBytes;
-  $("code-off-text").textContent = "Turn off code search? Its index" + (size ? ` (${bytes(size)})` : "")
-    + " is deleted, and turning it on again reads the code again.";
+  $("code-off-text").textContent = t("Turn off code search? Its index" + (size ? ` (${bytes(size)})` : "")
+    + " is deleted, and turning it on again reads the code again.");
   $("code-off-confirm").hidden = false;
   $("code-off").hidden = true;
 };
@@ -387,13 +386,14 @@ $("code-off-go").onclick = async () => {
 
 function renderStorage() {
   const storage = info.storage || {}, model = (info.state || {}).model || {};
-  const states = { ready: "Downloaded", checking: "Checking…", waiting: "Waiting for the network", failed: "The download stopped" };
-  $("model-status").textContent = model.state === "downloading"
-    ? `Downloading · ${model.total ? Math.floor((100 * model.bytes) / model.total) : 0}%` : states[model.state] || "";
+  const states = { ready: "Model ready", checking: "Checking…", waiting: "Waiting for the network", failed: "The download stopped" };
+  $("model-status").textContent = t(model.repair ? "Bundled models are missing or corrupt. Repair the installation."
+    : model.state === "downloading"
+    ? `Downloading · ${model.total ? Math.floor((100 * model.bytes) / model.total) : 0}%` : states[model.state] || "");
   pathButton($("model-path"), storage.models);
-  $("index-size").textContent = bytes(storage.indexBytes || 0) + (storage.codeBytes ? ` (code ${bytes(storage.codeBytes)})` : "");
+  $("index-size").textContent = bytes(storage.indexBytes || 0) + (storage.codeBytes ? t(` (code ${bytes(storage.codeBytes)})`) : "");
   pathButton($("index-path"), storage.index);
-  $("version").textContent = `DigUp ${info.version || ""} · EmbeddingGemma 2 by Google (Apache 2.0), run by llama.cpp (MIT).`;
+  $("version").textContent = t(`DigUp ${info.version || ""} · EmbeddingGemma 2 by Google (Apache 2.0), run by llama.cpp (MIT).`);
   $("licenses").hidden = !info.licenses;
 }
 
@@ -404,7 +404,7 @@ function pathButton(button, path) {
   const inner = document.createElement("bdi");
   inner.textContent = shown(path);
   button.append(inner);
-  button.title = isWindows ? "Show in Explorer" : "Show in Files";
+  button.title = t(isWindows ? "Show in Explorer" : "Show in Files");
   button.onclick = () => invoke("reveal", { path }).catch(fail);
 }
 
@@ -419,12 +419,12 @@ function countsText(kinds) {
     part(kinds.audio, "recording", "recordings"),
     part(kinds.video, "video", "videos"),
     part(kinds.code, "file of code", "files of code"),
-  ].filter(Boolean).join(" · ");
+  ].filter(Boolean).map(t).join(" · ");
 }
 
 /// Sizes the way file managers count them: "62 KB", "2.1 MB".
 function bytes(count) {
-  if (count < 1000) return `${count} bytes`;
+  if (count < 1000) return t(`${count} bytes`);
   const units = ["KB", "MB", "GB", "TB"];
   let value = count / 1000, unit = 0;
   while (value >= 1000 && unit < units.length - 1) { value /= 1000; unit += 1; }
@@ -456,12 +456,12 @@ function samePath(a, b) {
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text != null) node.textContent = text;
+  if (text != null) node.textContent = ["name", "path", "key"].includes(className) ? text : t(text);
   return node;
 }
 
 function fail(error) {
-  $("problem").textContent = String(error);
+  $("problem").textContent = t(String(error));
   $("problem").hidden = false;
 }
 
@@ -499,6 +499,7 @@ tauri.event.listen("state", ({ payload }) => {
 });
 
 async function start() {
+  await I18n.ready;
   await refresh();
   // Debug runs (--debug-settings): the page is up.
   if (info.debug) {
@@ -510,3 +511,11 @@ async function start() {
 }
 
 start();
+I18n.onChange(() => {
+  if (!info.shortcut) return;
+  renderGeneral();
+  renderStatus();
+  renderFolders();
+  renderCode();
+  renderStorage();
+});

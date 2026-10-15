@@ -60,6 +60,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private var shownProgress: Double?
     private var shownPaused = false
     private var shownUpdate = false
+    private var languageObserver: NSObjectProtocol?
 
     init(model: AppModel) {
         self.model = model
@@ -68,6 +69,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         statusItem.menu = menu
         refreshButton()
         observeModel()
+        languageObserver = NotificationCenter.default.addObserver(forName: L10n.didChange, object: nil,
+                                                                  queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.refreshButton()
+                self.menuNeedsUpdate(self.menu)
+            }
+        }
     }
 
     private func observeModel() {
@@ -75,6 +84,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             _ = model.status
             _ = model.progress
             _ = model.updateAvailable
+            _ = LanguageSettings.shared.language
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.refreshButton()
@@ -99,45 +109,49 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let header = NSMenuItem()
-        let view = NSHostingView(rootView: MenuStatusView(model: model))
+        let view = NSHostingView(rootView: LocalizedRoot(content: MenuStatusView(model: model)))
         view.frame.size = view.fittingSize
         header.view = view
         menu.addItem(header)
         menu.addItem(.separator())
         if let version = model.updateAvailable {
-            menu.addItem(ActionMenuItem("Update to DigUp \(version)…") { [weak self] in self?.onCheckForUpdates() })
+            menu.addItem(ActionMenuItem(L10n.tr("Update to DigUp \(version)…")) { [weak self] in self?.onCheckForUpdates() })
             menu.addItem(.separator())
         }
 
         if !model.hasFolders {
-            menu.addItem(ActionMenuItem("Choose Folders to Search…") { [weak self] in self?.onChooseFolders() })
+            menu.addItem(ActionMenuItem(L10n.tr("Choose Folders to Search…")) { [weak self] in self?.onChooseFolders() })
         }
-        let search = ActionMenuItem("Search…") { [weak self] in self?.onSearch() }
+        let search = ActionMenuItem(L10n.tr("Search…")) { [weak self] in self?.onSearch() }
         if let hotkey = model.hotkey, let (key, modifiers) = hotkey.menuEquivalent {
             search.keyEquivalent = key
             search.keyEquivalentModifierMask = modifiers
         }
         menu.addItem(search)
-        menu.addItem(ActionMenuItem("Open DigUp") { [weak self] in self?.onOpenWindow() })
+        menu.addItem(ActionMenuItem(L10n.tr("Open DigUp")) { [weak self] in self?.onOpenWindow() })
         if model.hasFolders {
             menu.addItem(.separator())
             let paused = model.status.paused
-            menu.addItem(ActionMenuItem(paused ? "Resume Indexing" : "Pause Indexing") { [weak self] in
+            menu.addItem(ActionMenuItem(paused ? L10n.tr("Resume Indexing") : L10n.tr("Pause Indexing")) { [weak self] in
                 self?.onPauseChanged(!paused)
             })
         }
         switch model.download.phase {
         case .failed, .needed:
-            menu.addItem(ActionMenuItem("Download the Model") { [weak self] in self?.model.download.start() })
+            menu.addItem(ActionMenuItem(model.download.bundled ? L10n.tr("Verify") : L10n.tr("Download the Model")) {
+                [weak self] in self?.model.download.start()
+            })
         default:
             break
         }
         menu.addItem(.separator())
-        menu.addItem(ActionMenuItem("Settings…", key: ",") { [weak self] in self?.onSettings() })
+        menu.addItem(ActionMenuItem(L10n.tr("Settings…"), key: ",") { [weak self] in self?.onSettings() })
+        let nextLanguage: AppLanguage = LanguageSettings.shared.language == .english ? .simplifiedChinese : .english
+        menu.addItem(ActionMenuItem(nextLanguage.name) { LanguageSettings.shared.language = nextLanguage })
         if model.updateAvailable == nil {
-            menu.addItem(ActionMenuItem("Check for Updates…") { [weak self] in self?.onCheckForUpdates() })
+            menu.addItem(ActionMenuItem(L10n.tr("Check for Updates…")) { [weak self] in self?.onCheckForUpdates() })
         }
-        menu.addItem(ActionMenuItem("Quit DigUp", key: "q") { NSApp.terminate(nil) })
+        menu.addItem(ActionMenuItem(L10n.tr("Quit DigUp"), key: "q") { NSApp.terminate(nil) })
     }
 
     /// The menu as text, for the -debugMenu launch argument (menus can't be clicked from a script).
@@ -155,7 +169,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     func performItem(titled title: String) {
         let menu = NSMenu()
         menuNeedsUpdate(menu)
-        guard let item = menu.items.first(where: { $0.title == title }), let action = item.action else { return }
+        guard let item = menu.items.first(where: { $0.title == L10n.resolve(title) }),
+              let action = item.action else { return }
         NSApp.sendAction(action, to: item.target, from: item)
     }
 }
@@ -187,15 +202,15 @@ struct MenuStatusView: View {
     }
 
     private var detail: String? {
-        if model.download.isActive { return model.download.progressText }
-        if case .failed(let message) = model.download.phase { return message }
-        guard model.hasFolders else { return "Pick the folders it should search." }
+        if model.download.isActive { return model.download.localizedProgressText }
+        if case .failed(let message) = model.download.phase { return L10n.resolve(message) }
+        guard model.hasFolders else { return L10n.tr("Pick the folders it should search.") }
         let missing = Set(model.status.missingRoots), unreadable = Set(model.status.unreadableRoots)
         let names = model.settings.roots.map { root in
-            root.lastPathComponent + (missing.contains(root.path) ? " (not connected)"
-                                      : unreadable.contains(root.path) ? " (no access)" : "")
+            root.lastPathComponent + (missing.contains(root.path) ? L10n.tr(" (not connected)")
+                                      : unreadable.contains(root.path) ? L10n.tr(" (no access)") : "")
         }
-        return "In " + names.joined(separator: ", ")
+        return L10n.tr("In ") + names.joined(separator: ", ")
     }
 }
 

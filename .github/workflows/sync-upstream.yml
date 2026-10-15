@@ -1,0 +1,50 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Fetch, merge and check without publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digup-sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'brucetoo/DigUp'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Isolated local tests
+        run: python3 -B -m unittest discover -s scripts/tests -p 'test_fork_*.py' -v
+      - name: Fetch, merge, check and propose
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == true ]]; then args+=(--dry-run); fi
+          bash scripts/sync-upstream.sh "${args[@]}" --report "$RUNNER_TEMP/upstream-sync.md"
+      - name: Sync report
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/upstream-sync.md" ]]; then
+            cat "$RUNNER_TEMP/upstream-sync.md" >> "$GITHUB_STEP_SUMMARY"
+          fi

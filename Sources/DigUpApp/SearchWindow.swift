@@ -54,7 +54,8 @@ final class SearchWindowController: NSObject, NSWindowDelegate {
         if UserDefaults.standard.string(forKey: "defaultsSuite") == nil {
             window.setFrameAutosaveName("DigUpSearchWindow")
         }
-        window.contentView = NSHostingView(rootView: SearchWindowView(search: search, model: app.model, app: app))
+        window.contentView = NSHostingView(rootView: LocalizedRoot(
+            content: SearchWindowView(search: search, model: app.model, app: app)))
         if window.frame.origin == .zero { window.center() }
         self.window = window
         return window
@@ -380,7 +381,7 @@ struct SearchWindowView: View {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                         }
                         .buttonStyle(.plain)
-                        .help("Clear")
+                        .help(L10n.tr("Clear"))
                     }
                 }
                 .padding(.horizontal, 12)
@@ -398,7 +399,7 @@ struct SearchWindowView: View {
                         .foregroundStyle(search.showsPreview ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
                 }
                 .buttonStyle(.plain)
-                .help(search.showsPreview ? "Hide Preview" : "Show Preview")
+                .help(search.showsPreview ? L10n.tr("Hide Preview") : L10n.tr("Show Preview"))
                 Button {
                     app.showSettings()
                 } label: {
@@ -407,7 +408,7 @@ struct SearchWindowView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Settings (⌘,)")
+                .help(L10n.tr("Settings (⌘,)"))
             }
             .padding(.leading, 78)   // beside the window buttons
             .frame(height: 52)
@@ -421,12 +422,12 @@ struct SearchWindowView: View {
         if !model.hasFolders {
             VStack(spacing: 0) {
                 BrandMark()
-                Text("Choose folders to search").font(.system(size: 20, weight: .bold)).padding(.top, 18)
-                Text("DigUp only looks where you tell it to.")
+                Text(L10n.tr("Choose folders to search")).font(.system(size: 20, weight: .bold)).padding(.top, 18)
+                Text(L10n.tr("DigUp only looks where you tell it to."))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .padding(.top, 6)
-                Button("Choose Folders…") { app.chooseFolders() }
+                Button(L10n.tr("Choose Folders…")) { app.chooseFolders() }
                     .controlSize(.large)
                     .keyboardShortcut(.defaultAction)
                     .padding(.top, 18)
@@ -441,9 +442,9 @@ struct SearchWindowView: View {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if search.results.isEmpty {
             EmptyState(symbol: search.isCode ? FileKind.code.symbol : "magnifyingglass",
-                       title: "No good matches for “\(search.query.trimmingCharacters(in: .whitespaces))”",
-                       message: search.isCode ? "Try saying what the code does, or a name that's in it."
-                           : "Try describing what's in it: what you'd see or hear, or words you remember.")
+                       title: L10n.tr("No good matches for “\(search.query.trimmingCharacters(in: .whitespaces))”"),
+                       message: search.isCode ? L10n.tr("Try saying what the code does, or a name that's in it.")
+                           : L10n.tr("Try describing what's in it: what you'd see or hear, or words you remember."))
         } else if search.isCode {
             CodeResultsList(search: search)
         } else {
@@ -460,7 +461,7 @@ struct SearchWindowView: View {
             Button(model.statusLine) { app.showSettings(.folders) }
                 .buttonStyle(.plain)
                 .lineLimit(1)
-                .help("Folders and indexing")
+                .help(L10n.tr("Folders and indexing"))
             Spacer()
             if search.hasResults, !search.query.isEmpty {
                 Text(model.resultsCaveat ?? resultCount).lineLimit(1)
@@ -469,11 +470,11 @@ struct SearchWindowView: View {
                 Button {
                     app.updates.checkNow()
                 } label: {
-                    Label("DigUp \(version) is available", systemImage: "arrow.down.circle.fill")
+                    Label(L10n.tr("DigUp \(version) is available"), systemImage: "arrow.down.circle.fill")
                         .foregroundStyle(Brand.ember)
                 }
                 .buttonStyle(.plain)
-                .help("See what's new and update")
+                .help(L10n.tr("See what's new and update"))
             }
         }
         .font(.system(size: 11))
@@ -484,15 +485,15 @@ struct SearchWindowView: View {
 
     /// Examples of what to type: code's with the Code chip on, and one of them with code search on (as the panel's).
     private var placeholder: String {
-        if search.filter == .code { return "Describe the code: “retry a request with backoff”, a name in it…" }
-        return model.hasCode ? "Describe it: “zebra in a video”, “code: retry with backoff”…"
-            : "Describe it: “receipt from the hardware store”, “zebra in a video”…"
+        if search.filter == .code { return L10n.tr("Describe the code: “retry a request with backoff”, a name in it…") }
+        return model.hasCode ? L10n.tr("Describe it: “zebra in a video”, “code: retry with backoff”…")
+            : L10n.tr("Describe it: “receipt from the hardware store”, “zebra in a video”…")
     }
 
     private var resultCount: String {
         let count = search.results.ranked.count
-        return (count == 1 ? "1 result" : "\(count) results")
-            + (search.results.weaker.isEmpty ? "" : " · \(search.results.weaker.count) weaker")
+        return (count == 1 ? L10n.tr("1 result") : L10n.tr("\(count) results"))
+            + (search.results.weaker.isEmpty ? "" : L10n.tr(" · \(search.results.weaker.count) weaker"))
     }
 }
 
@@ -504,7 +505,7 @@ private struct KindFilters: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            chip(title: "All", symbol: nil, count: nil, selected: search.filter == nil && !search.isCode) {
+            chip(title: L10n.tr("All"), symbol: nil, count: nil, selected: search.filter == nil && !search.isCode) {
                 search.filter = nil
             }
             ForEach(ResultGroupKind.files, id: \.self) { kind in
@@ -515,7 +516,7 @@ private struct KindFilters: View {
             }
             if showsCode {
                 Divider().frame(height: 16).padding(.horizontal, 4)
-                chip(title: "Code", symbol: FileKind.code.symbol, count: search.isCode ? search.counts[.code] : nil,
+                chip(title: L10n.tr("Code"), symbol: FileKind.code.symbol, count: search.isCode ? search.counts[.code] : nil,
                      selected: search.isCode, shortcut: 7) {
                     search.filter = search.filter == .code ? nil : .code
                 }
@@ -723,7 +724,7 @@ private struct CodeResultRow: View {
             .fill(selected ? Color.accentColor.opacity(0.22) : Color.clear))
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Code, \(row.name), \(row.reason)")
+        .accessibilityLabel(L10n.tr("Code, \(row.name), \(row.reason)"))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -740,17 +741,16 @@ private struct CodeOffOrHint: View {
                 .font(.system(size: 34, weight: .medium))
                 .foregroundStyle(Brand.gradient)
             if phase == .codeOff {
-                Text("Code search is off").font(.system(size: 17, weight: .semibold))
-                Text("DigUp can find code by what it does, in the folders you pick. Code gets an index of its own and "
-                     + "never shows up in other searches.")
+                Text(L10n.tr("Code search is off")).font(.system(size: 17, weight: .semibold))
+                Text(L10n.tr("DigUp can find code by what it does, in the folders you pick. Code gets an index of its own and never shows up in other searches."))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
-                Button("Choose Code Folders…", action: chooseFolders).padding(.top, 6)
+                Button(L10n.tr("Choose Code Folders…"), action: chooseFolders).padding(.top, 6)
             } else {
-                Text("Search your code").font(.system(size: 17, weight: .semibold))
-                Text("Say what the code does, or type a name that's in it.")
+                Text(L10n.tr("Search your code")).font(.system(size: 17, weight: .semibold))
+                Text(L10n.tr("Say what the code does, or type a name that's in it."))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
@@ -796,7 +796,7 @@ struct WeakerToggle: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .semibold))
                     .rotationEffect(.degrees(expanded ? 90 : 0))
-                Text(expanded ? "Weaker matches" : "\(count) weaker \(count == 1 ? "match" : "matches")")
+                Text(expanded ? L10n.tr("Weaker matches") : L10n.tr("\(count) weaker \(count == 1 ? "match" : "matches")"))
                     .font(.system(size: 12, weight: .medium))
             }
             .foregroundStyle(.secondary)
@@ -841,26 +841,25 @@ private struct SearchHome: View {
     let engine: Engine
     @State private var kinds: [FileKind: Int] = [:]
 
-    private static let examples: [(text: String, kind: ResultGroupKind)] = [
-        ("a screenshot of an error message", .screenshots), ("receipt", .documents), ("whiteboard notes", .images),
-        ("someone laughing", .audio), ("a dog on the beach", .video), ("slides about the budget", .documents),
-    ]
+    private static var examples: [(text: String, kind: ResultGroupKind)] { [
+        (L10n.tr("a screenshot of an error message"), .screenshots), (L10n.tr("receipt"), .documents), (L10n.tr("whiteboard notes"), .images),
+        (L10n.tr("someone laughing"), .audio), (L10n.tr("a dog on the beach"), .video), (L10n.tr("slides about the budget"), .documents),
+    ] }
 
     var body: some View {
         VStack(spacing: 0) {
             BrandMark()
-            Text("Describe it. Dig it up.")
+            Text(L10n.tr("Describe it. Dig it up."))
                 .font(.system(size: 24, weight: .bold))
                 .padding(.top, 18)
-            Text("Type what you remember in the search field above: what's in it, what it looks or sounds like, or "
-                 + "words from it.")
+            Text(L10n.tr("Type what you remember in the search field above: what's in it, what it looks or sounds like, or words from it."))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 440)
                 .padding(.top, 6)
-            Text("TRY")
+            Text(L10n.tr("TRY"))
                 .font(.system(size: 10, weight: .semibold))
                 .tracking(0.8)
                 .foregroundStyle(.tertiary)
@@ -876,15 +875,15 @@ private struct SearchHome: View {
                 if !kinds.isEmpty {
                     HStack(spacing: 8) {
                         KindCounts(counts: kinds)
-                        Text("in \(folders)")
+                        Text(L10n.tr("in \(folders)"))
                     }
                 } else if model.status.searchable > 0 {
-                    Text("\(model.status.searchable.formatted()) files to search in \(folders)")
+                    Text(L10n.tr("\(model.status.searchable.formatted()) files to search in \(folders)"))
                 }
                 if let hotkey = model.hotkey {
                     HStack(spacing: 6) {
                         Keycaps(caps: hotkey.caps, size: 10)
-                        Text("opens DigUp from any app")
+                        Text(L10n.tr("opens DigUp from any app"))
                     }
                 }
             }
@@ -905,12 +904,13 @@ private struct SearchHome: View {
 
     /// With code search on, one of code's too.
     private var examples: [(text: String, kind: ResultGroupKind)] {
-        Self.examples + (model.hasCode ? [("code: where the settings are saved", .code)] : [])
+        Self.examples + (model.hasCode ? [(L10n.tr("code: where the settings are saved"), .code)] : [])
     }
 
     private var folders: String {
         let names = model.settings.roots.map(\.lastPathComponent)
-        return names.count <= 3 ? names.formatted(.list(type: .and)) : "\(names.count) folders"
+        return names.count <= 3 ? names.formatted(.list(type: .and).locale(L10n.locale))
+            : L10n.tr("\(names.count) folders")
     }
 }
 
@@ -954,7 +954,7 @@ private struct ExampleChip: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Search for “\(text)”")
+        .help(L10n.tr("Search for “\(text)”"))
         .onHover { inside in
             hovering = inside
             if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
