@@ -7,6 +7,12 @@ const vm = require("node:vm");
 const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, "zh-Hans.json"), "utf8"));
 const source = fs.readFileSync(path.join(__dirname, "i18n.js"), "utf8");
 
+test("packaged content policy permits reading the local translation catalog", () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../src-tauri/tauri.conf.json"), "utf8"));
+  const connect = config.app.security.csp.split(";").find((directive) => directive.trim().startsWith("connect-src"));
+  assert.ok(connect.split(/\s+/).includes("'self'"), "local catalog fetch must be allowed on Windows WebView2");
+});
+
 function windowContext(bus, saved = "zh-Hans", failSave = false) {
   const text = { nodeValue: " General ", parentElement: { closest: () => null }, isConnected: true };
   let walked = false;
