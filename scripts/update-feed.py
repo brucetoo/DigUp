@@ -7,7 +7,7 @@ the newest release's version, notes, date, and for each platform the file to dow
 <folder> holds the packages the release publishes with their .sig files, as the packages workflow makes them with the
 signing key (DigUp_<version>_x64-setup.exe and DigUp_<version>_amd64.AppImage, each with a .sig): the Windows installer
 and the AppImage update themselves; a .deb install is told of the update by the same entry and opens the release page.
-Downloads point at GitHub Releases ($DOWNLOAD_BASE, by default https://github.com/ARahim3/DigUp/releases/download/<tag>/,
+Downloads point at GitHub Releases ($DOWNLOAD_BASE, by default https://github.com/brucetoo/DigUp/releases/download/<tag>/,
 the tag v<version>). Notes are plain text, shown in the update's dialog. Publishing the packages and then the feed (in
 that order: installed copies read the feed from the repository's main branch) is a separate step.
 """
@@ -50,7 +50,7 @@ def main():
         sys.exit(f"update-feed: the packages are of different versions: {sorted(versions)}")
     version = versions.pop()
     tag = args.tag or f"v{version}"
-    base = os.environ.get("DOWNLOAD_BASE", f"https://github.com/ARahim3/DigUp/releases/download/{tag}/")
+    base = os.environ.get("DOWNLOAD_BASE", f"https://github.com/brucetoo/DigUp/releases/download/{tag}/")
     feed = {
         "version": version,
         "notes": Path(args.notes).read_text().strip() if args.notes else "",
