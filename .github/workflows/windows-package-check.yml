@@ -1,0 +1,48 @@
+name: Windows package check
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Packages run containing DigUp-windows-x64
+        required: true
+        default: "38691573346"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  installed-app:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: DigUp-windows-x64
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: packages
+      - name: Install and inspect the actual package
+        shell: bash
+        run: |
+          mkdir -p package-report
+          export DIGUP_PACKAGE_REPORT_DIR="$(cygpath -m "$PWD/package-report")"
+          export DIGUP_PACKAGE_TIMEOUT=180
+          export WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9222"
+          node scripts/inspect-windows-webview.cjs > package-report/webview.log 2>&1 &
+          inspector=$!
+          set +e
+          scripts/check-windows-package.sh packages/*-setup.exe
+          result=$?
+          kill "$inspector" 2>/dev/null || true
+          powershell.exe -NoProfile -Command \
+            'Get-Process DigUp,digup,msedgewebview2 -ErrorAction SilentlyContinue | Select-Object ProcessName,Id,CPU,MainWindowTitle | ConvertTo-Json' \
+            > package-report/processes.json
+          exit "$result"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: Windows-package-report
+          path: package-report/

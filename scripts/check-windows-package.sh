@@ -9,7 +9,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 setup=${1:?the installer}
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+cleanup() {
+  if [[ -n "${DIGUP_PACKAGE_REPORT_DIR:-}" ]]; then
+    mkdir -p "$DIGUP_PACKAGE_REPORT_DIR"
+    cp -R "$work" "$DIGUP_PACKAGE_REPORT_DIR/first-launch"
+    logs=$(cygpath -u "$LOCALAPPDATA")/com.brucetoo.DigUp/logs
+    [[ ! -d "$logs" ]] || cp -R "$logs" "$DIGUP_PACKAGE_REPORT_DIR/app-logs"
+  fi
+  rm -rf "$work"
+}
+trap cleanup EXIT
 win() { cygpath -m "$1"; }
 
 echo "installing $setup"
@@ -44,7 +53,7 @@ started=$(date +%s)
   --debug-quit > "$work/out.txt" 2> "$work/err.txt" &
 app=$!
 report=
-while kill -0 "$app" 2> /dev/null && (( $(date +%s) - started < 1800 )); do
+while kill -0 "$app" 2> /dev/null && (( $(date +%s) - started < ${DIGUP_PACKAGE_TIMEOUT:-1800} )); do
   report=$(grep '^{' "$work/out.txt" 2> /dev/null | tail -1 || true)
   [[ -n $report ]] && break
   sleep 2
