@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
   <meta charset="utf-8">
   <title>DigUp</title>
@@ -8,6 +8,7 @@
 <body>
   <header class="top">
     <div class="bar">
+      <button class="language-toggle" type="button">English</button>
       <label class="field" id="field">
         <span class="glass" id="glass" aria-hidden="true"></span>
         <input id="query" type="text" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Search">
@@ -42,6 +43,7 @@
   </footer>
 
   <div class="menu" id="menu" role="menu" hidden></div>
+  <script src="i18n.js"></script>
   <script src="results.js"></script>
   <script src="window.js"></script>
 </body>

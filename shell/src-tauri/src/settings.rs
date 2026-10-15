@@ -1,5 +1,5 @@
 //! What the person chose: the folders DigUp searches, what it skips in them, the hotkey, and whether setup is done. A
-//! JSON file in the app's config folder (%APPDATA%\com.abdurrahim.DigUp on Windows, ~/.config/com.abdurrahim.DigUp on
+//! JSON file in the app's config folder (%APPDATA%\com.brucetoo.DigUp on Windows, ~/.config/com.brucetoo.DigUp on
 //! Linux). Launch arguments (`--roots`, `--hotkey`) stand in for it in dev runs.
 
 use crate::hours::Hours;
@@ -9,6 +9,7 @@ use std::path::Path;
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub language: Language,
     /// The folders searched and kept indexed.
     pub folders: Vec<String>,
     /// Folders inside them that aren't (`FolderSelection` in the engine).
@@ -35,10 +36,41 @@ pub struct Settings {
     pub window: Option<WindowPlace>,
     /// A click on the tray icon (Windows): "panel" shows the search panel, anything else opens the window.
     pub tray_click: String,
-    /// The daily check for updates was turned off (Settings → General; it's on by default).
+    /// Legacy update preference. This fork never enables automatic updates.
     pub update_checks_off: bool,
     /// When DigUp last checked for updates (seconds since 1970).
     pub update_checked: u64,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub enum Language {
+    #[default]
+    #[serde(rename = "zh-Hans")]
+    Chinese,
+    #[serde(rename = "en")]
+    English,
+}
+
+impl Language {
+    pub fn code(self) -> &'static str {
+        match self { Self::Chinese => "zh-Hans", Self::English => "en" }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn language_defaults_and_round_trips() {
+        assert_eq!(Settings::default().language, Language::Chinese);
+        assert_eq!(serde_json::from_str::<Settings>("{}").unwrap().language, Language::Chinese);
+        let settings: Settings = serde_json::from_str(r#"{"language":"en","setUp":true}"#).unwrap();
+        let restored: Settings = serde_json::from_value(serde_json::to_value(settings).unwrap()).unwrap();
+        assert_eq!(restored.language, Language::English);
+        assert!(restored.set_up);
+        assert!(serde_json::from_str::<Settings>(r#"{"language":"fr"}"#).is_err());
+    }
 }
 
 /// The window's size inside its frame (logical pixels), where it was (physical; Wayland doesn't tell), and whether it

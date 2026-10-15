@@ -3,6 +3,7 @@ import AppKit
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var app: AppController?
+    private var languageObserver: NSObjectProtocol?
 
     static func main() {
         signal(SIGPIPE, SIG_IGN)   // a helper that just exited must surface as a write error, not kill the app
@@ -39,6 +40,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let app = AppController(settings: settings)
         self.app = app
         NSApp.mainMenu = Self.makeMainMenu(app)
+        languageObserver = NotificationCenter.default.addObserver(forName: L10n.didChange, object: nil,
+                                                                  queue: .main) { [weak app] _ in
+            MainActor.assumeIsolated {
+                guard let app else { return }
+                NSApp.mainMenu = Self.makeMainMenu(app)
+            }
+        }
         app.start(showWindow: showWindow)
         DebugHooks.run(app)
     }
@@ -63,31 +71,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mainMenu = NSMenu()
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About DigUp", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
-                        keyEquivalent: "")
-        appMenu.addItem(ActionMenuItem("Check for Updates…") { [weak app] in app?.updates.checkNow() })
+        appMenu.addItem(ActionMenuItem(L10n.tr("About DigUp")) { [weak app] in app?.showAbout() })
+        appMenu.addItem(ActionMenuItem(L10n.tr("Check for Updates…")) { [weak app] in app?.updates.checkNow() })
         appMenu.addItem(.separator())
-        appMenu.addItem(ActionMenuItem("Settings…", key: ",") { [weak app] in app?.showSettings() })
+        appMenu.addItem(ActionMenuItem(L10n.tr("Settings…"), key: ",") { [weak app] in app?.showSettings() })
+        let languageMenu = NSMenu(title: L10n.tr("Language"))
+        for language in AppLanguage.allCases {
+            let item = ActionMenuItem(language.name) { LanguageSettings.shared.language = language }
+            item.state = LanguageSettings.shared.language == language ? .on : .off
+            languageMenu.addItem(item)
+        }
+        let languageItem = NSMenuItem(title: L10n.tr("Language"), action: nil, keyEquivalent: "")
+        languageItem.submenu = languageMenu
+        appMenu.addItem(languageItem)
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide DigUp", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(withTitle: "Quit DigUp", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: L10n.tr("Hide DigUp"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: L10n.tr("Quit DigUp"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
-        let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(ActionMenuItem("New Search", key: "n") { [weak app] in app?.showSearchWindow(query: "") })
-        fileMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let fileMenu = NSMenu(title: L10n.tr("File"))
+        fileMenu.addItem(ActionMenuItem(L10n.tr("New Search"), key: "n") { [weak app] in app?.showSearchWindow(query: "") })
+        fileMenu.addItem(withTitle: L10n.tr("Close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
 
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        let editMenu = NSMenu(title: L10n.tr("Edit"))
+        editMenu.addItem(withTitle: L10n.tr("Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: L10n.tr("Redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         editMenu.addItem(.separator())
-        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(withTitle: L10n.tr("Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: L10n.tr("Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: L10n.tr("Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: L10n.tr("Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
-        let windowMenu = NSMenu(title: "Window")
-        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "")
+        let windowMenu = NSMenu(title: L10n.tr("Window"))
+        windowMenu.addItem(withTitle: L10n.tr("Minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: L10n.tr("Close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "")
         NSApp.windowsMenu = windowMenu
 
         for submenu in [appMenu, fileMenu, editMenu, windowMenu] {

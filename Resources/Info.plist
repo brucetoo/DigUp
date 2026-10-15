@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
 	<string>DigUp</string>
 	<key>CFBundleExecutable</key>
@@ -13,7 +13,11 @@
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.abdurrahim.DigUp</string>
+	<string>com.brucetoo.DigUp</string>
+	<key>DigUpBundledModels</key>
+	<true/>
+	<key>CFBundleLocalizations</key>
+	<array><string>zh-Hans</string><string>en</string></array>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -43,10 +47,6 @@
 	<key>NSRemovableVolumesUsageDescription</key>
 	<string>DigUp indexes the folders you choose so you can search them by describing what's inside. Everything stays on this Mac.</string>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/ARahim3/DigUp/main/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>dyiW9CWkvqSnsGTWMmzmnkggQBsXpRuHCUIS2RyRkaw=</string>
+	<false/>
 </dict>
 </plist>

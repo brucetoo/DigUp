@@ -34,6 +34,7 @@ final class ModelDownload {
     private(set) var bytesPerSecond: Double = 0
     let total = ModelFiles.totalBytes
     let folder: URL
+    let bundled: Bool
 
     @ObservationIgnored var onReady: () -> Void = {}
     @ObservationIgnored private var fetcher: FileFetcher?
@@ -47,9 +48,10 @@ final class ModelDownload {
     /// Files whose `.partial` was chosen by hand (`use`): one that fails its check says so rather than downloading.
     @ObservationIgnored private var chosen = Set<String>()
 
-    init(folder: URL) {
+    init(folder: URL, bundled: Bool = false) {
         self.folder = folder
-        phase = ModelFiles.missing(in: folder).isEmpty ? .ready : .needed
+        self.bundled = bundled
+        phase = bundled ? .needed : (ModelFiles.missing(in: folder).isEmpty ? .ready : .needed)
         received = bytesOnDisk()
     }
 
@@ -86,6 +88,23 @@ final class ModelDownload {
         switch phase {
         case .ready, .downloading, .verifying: return
         default: break
+        }
+        if bundled {
+            phase = .verifying
+            let folder = self.folder
+            Task {
+                let valid = await Task.detached(priority: .utility) {
+                    (try? ModelFiles.verify(in: folder)) != nil
+                }.value
+                if valid {
+                    received = total
+                    phase = .ready
+                    onReady()
+                } else {
+                    phase = .failed("Bundled models are missing or corrupt. Repair the installation.")
+                }
+            }
+            return
         }
         guard fetcher == nil else { return }   // one download at a time: two would write the same .partial
         retryWork?.cancel()
@@ -256,6 +275,7 @@ final class ModelDownload {
     /// name only at the right size (a smaller one would be taken for a download to resume). What's still missing
     /// afterwards downloads as usual.
     func use(_ urls: [URL]) {
+        guard !bundled else { return }
         var picked: [(file: ModelFiles.File, url: URL)] = []
         var problem = "Those aren't the model's files"
         for url in urls {
@@ -300,14 +320,15 @@ final class ModelDownload {
 
     /// An open panel for `use`, as a sheet on `window` when there is one.
     func chooseFiles(for window: NSWindow?) {
+        guard !bundled else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
-        panel.prompt = "Use"
-        panel.message = "Choose the model files you downloaded: "
-            + ModelFiles.all.map(\.name).joined(separator: " and ") + "."
+        let observer = L10n.localize(panel, title: "Use Files…", prompt: "Use",
+            message: "Choose the model files you downloaded: \(ModelFiles.all.map(\.name).joined(separator: ", ")).")
         let finish = { [weak self] (response: NSApplication.ModalResponse) in
+            NotificationCenter.default.removeObserver(observer)
             guard response == .OK else { return }
             self?.use(panel.urls)
         }
@@ -355,4 +376,3 @@ final class ModelDownload {
 nonisolated func bytes(_ count: Int64) -> String {
     ByteCountFormatter.string(fromByteCount: count, countStyle: .file)
 }
-

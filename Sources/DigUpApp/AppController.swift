@@ -1,6 +1,7 @@
 import AppKit
 import DigUpKit
 import ServiceManagement
+import SwiftUI
 
 /// Owns the app's parts (engine, model download, hotkey, panel, windows, menu) and carries out what they ask for:
 /// new folders, a new hotkey, the login item, which window to show.
@@ -22,11 +23,12 @@ final class AppController {
     private(set) var statusMenu: StatusMenuController!
     private(set) var onboarding: OnboardingController?
     private var observers: [NSObjectProtocol] = []
+    private var aboutWindow: NSWindow?
     /// Set while onboarding's shortcut step waits for you to try the hotkey: a press goes there, not to the panel.
     var hotkeyTester: (() -> Void)?
 
     init(settings: AppSettings) {
-        let download = ModelDownload(folder: settings.modelsDirectory)
+        let download = ModelDownload(folder: settings.modelsDirectory, bundled: settings.bundledModels)
         let model = AppModel(settings: settings, download: download)
         var engineRef: Engine?
         let power = PowerPolicy(indexOnBattery: settings.indexOnBattery) { blocker in
@@ -57,6 +59,10 @@ final class AppController {
 
     /// `showWindow`: opened by hand (not at login), so the search window comes up once the app is set up.
     func start(showWindow: Bool = false) {
+        observers.append(NotificationCenter.default.addObserver(forName: L10n.didChange, object: nil,
+                                                                queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.aboutWindow?.title = L10n.tr("About DigUp") }
+        })
         panel = SearchPanelController(app: self)
         searchWindow = SearchWindowController(app: self)
         settingsWindow = SettingsWindowController(app: self)
@@ -202,15 +208,16 @@ final class AppController {
     }
 
     /// Asks for folders with the standard open panel (as a sheet when there's a window).
-    func pickFolders(for window: NSWindow?, prompt: String = "Add", then done: @escaping ([URL]) -> Void) {
+    func pickFolders(for window: NSWindow?, prompt: L10n.Message = "Add", then done: @escaping ([URL]) -> Void) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
         panel.canCreateDirectories = false
-        panel.prompt = prompt
-        panel.message = "Choose folders for DigUp to search."
+        let languageObserver = L10n.localize(panel, prompt: prompt,
+                                            message: "Choose folders for DigUp to search.")
         let finish = { (response: NSApplication.ModalResponse) in
+            NotificationCenter.default.removeObserver(languageObserver)
             done(response == .OK ? panel.urls.map { AppSettings.folderURL($0.path) } : [])
         }
         if let window { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
@@ -269,6 +276,23 @@ final class AppController {
 
     // MARK: Windows
 
+    func showAbout() {
+        if aboutWindow == nil {
+            let window = NSWindow(contentViewController: NSHostingController(rootView: LocalizedRoot(
+                content: AboutView())))
+            window.styleMask = [.titled, .closable]
+            window.title = L10n.tr("About DigUp")
+            window.isReleasedWhenClosed = false
+            window.center()
+            aboutWindow = window
+            observers.append(NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification,
+                                                                    object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.windowClosed() }
+            })
+        }
+        if let aboutWindow { present(aboutWindow) }
+    }
+
     func showSearchWindow(query: String? = nil, kind: ResultGroupKind? = nil) {
         searchWindow.show(query: query, kind: kind)
     }
@@ -305,7 +329,7 @@ final class AppController {
     /// A window closed: the Dock icon goes once none is left.
     func windowClosed() {
         DispatchQueue.main.async { [self] in
-            let open = [searchWindow?.isVisible, settingsWindow?.isVisible, onboarding?.isVisible]
+            let open = [searchWindow?.isVisible, settingsWindow?.isVisible, onboarding?.isVisible, aboutWindow?.isVisible]
                 .contains { $0 == true }
             if !open {
                 NSApp.setActivationPolicy(.accessory)

@@ -86,6 +86,7 @@ nonisolated final class Engine: @unchecked Sendable {
 
     let indexDirectory: URL
     let modelsDirectory: URL
+    private var modelsVerified: Bool
     let encoderIdleSeconds: Double
     private let indexQueue = DispatchQueue(label: "DigUp.index", qos: .utility)
     private let searchQueue = DispatchQueue(label: "DigUp.search", qos: .userInitiated)
@@ -168,6 +169,7 @@ nonisolated final class Engine: @unchecked Sendable {
          onStatus: @escaping @MainActor @Sendable (EngineStatus) -> Void) {
         indexDirectory = settings.indexDirectory
         modelsDirectory = settings.modelsDirectory
+        modelsVerified = !settings.bundledModels
         encoderIdleSeconds = settings.encoderIdleSeconds
         roots = settings.roots
         excluded = settings.excludedFolders
@@ -292,6 +294,7 @@ nonisolated final class Engine: @unchecked Sendable {
 
     /// The model has finished downloading: index what's waiting, and meaning search may start.
     func modelArrived() {
+        lock.withLock { modelsVerified = true }
         update { $0.waitingForModel = false }
         encoderQueue.async { [self] in encoderFailed = false }
         indexQueue.async { [self] in requestSync() }
@@ -478,6 +481,7 @@ nonisolated final class Engine: @unchecked Sendable {
     /// 50 new files on any power source, then the backfill if the power policy allows; it exits a minute after
     /// its last file. Before the model has downloaded it only syncs (file names become searchable) and exits.
     private func startHelper() {
+        guard lock.withLock({ modelsVerified }) else { return }
         let (roots, excluded, types, paused, backfill): ([URL], [URL], [String], Bool, Bool) = lock.withLock {
             (self.roots, self.excluded, self.excludedTypes, self.paused || heldUntil != nil, backfillBlocker == nil)
         }
@@ -984,6 +988,7 @@ nonisolated final class Engine: @unchecked Sendable {
     }
 
     private func runningEncoder() -> EmbeddingWorker? {
+        guard lock.withLock({ modelsVerified }) else { return nil }
         if let encoder { return encoder }
         guard !encoderFailed else { return nil }
         let python = try? WorkerConfig.fromEnvironment()

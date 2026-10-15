@@ -1,6 +1,9 @@
 {
   "mainBinaryName": "DigUp",
   "bundle": {
+    "resources": {
+      "models/": "models/"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser"

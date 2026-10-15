@@ -69,7 +69,7 @@ struct ResultRow: Identifiable, Equatable {
     var place: String? {
         guard let loc else { return nil }
         switch segment {
-        case .page, .pageImage: return "p. \(Int(loc))"
+        case .page, .pageImage: return L10n.tr("p. \(Int(loc))")
         case .frame: return Self.clock(loc)
         case .audio: return kind == .video ? "♪ \(Self.clock(loc))" : Self.clock(loc)
         case .lines: return Int(loc) == Int(locEnd ?? loc) ? "L\(Int(loc))" : "L\(Int(loc))–\(Int(locEnd ?? loc))"
@@ -83,8 +83,8 @@ struct ResultRow: Identifiable, Equatable {
         guard let loc else { return nil }
         let (first, last) = (Int(loc), Int(locEnd ?? loc))
         switch segment {
-        case .lines: return first == last ? "line \(first)" : "lines \(first)–\(last)"
-        case .cells: return first == last ? "cell \(first)" : "cells \(first)–\(last)"
+        case .lines: return first == last ? L10n.tr("line \(first)") : L10n.tr("lines \(first)–\(last)")
+        case .cells: return first == last ? L10n.tr("cell \(first)") : L10n.tr("cells \(first)–\(last)")
         default: return nil
         }
     }
@@ -96,19 +96,19 @@ struct ResultRow: Identifiable, Equatable {
 
     /// Why it's here, in a few words: "Matches the picture", "Matches the frame at 0:06".
     var reason: String {
-        guard matchedMeaning else { return matchedWords ? "Has your words" : "Matches its name" }
+        guard matchedMeaning else { return matchedWords ? L10n.tr("Has your words") : L10n.tr("Matches its name") }
         let place = loc.map(Self.clock) ?? ""
-        let page = loc.map { "page \(Int($0))" } ?? "a page"
+        let page = loc.map { L10n.tr("page \(Int($0))") } ?? L10n.tr("a page")
         switch segment {
-        case .image: return kind == .screenshot ? "Matches what's on screen" : "Matches the picture"
-        case .ocr: return "Matches the text in it"
-        case .frame: return "Matches the frame at \(place)"
-        case .audio: return kind == .video ? "Matches the sound at \(place)" : "Matches what's heard at \(place)"
-        case .page: return "Matches the text on \(page)"
-        case .pageImage: return "Matches \(page)"
-        case .chunk: return "Matches its text"
-        case .name: return "Matches its name"
-        case .lines, .cells: return "Matches \(span ?? "the code")"
+        case .image: return kind == .screenshot ? L10n.tr("Matches what's on screen") : L10n.tr("Matches the picture")
+        case .ocr: return L10n.tr("Matches the text in it")
+        case .frame: return L10n.tr("Matches the frame at \(place)")
+        case .audio: return kind == .video ? L10n.tr("Matches the sound at \(place)") : L10n.tr("Matches what's heard at \(place)")
+        case .page: return L10n.tr("Matches the text on \(page)")
+        case .pageImage: return L10n.tr("Matches \(page)")
+        case .chunk: return L10n.tr("Matches its text")
+        case .name: return L10n.tr("Matches its name")
+        case .lines, .cells: return L10n.tr("Matches \(span ?? L10n.tr("the code"))")
         }
     }
 
@@ -118,22 +118,22 @@ struct ResultRow: Identifiable, Equatable {
         if kind == .code {
             var parts = [CodeExtractor.language(of: url.path)]
             if let cells = info["cells"].flatMap(Int.init) {
-                parts.append(cells == 1 ? "1 cell" : "\(cells) cells")
+                parts.append(cells == 1 ? L10n.tr("1 cell") : L10n.tr("\(cells) cells"))
             } else if let lines = info["lines"].flatMap(Int.init) {
-                parts.append(lines == 1 ? "1 line" : "\(lines.formatted()) lines")
+                parts.append(lines == 1 ? L10n.tr("1 line") : L10n.tr("\(lines.formatted()) lines"))
             }
-            parts.append(modified.formatted(date: .abbreviated, time: .omitted))
+            parts.append(L10n.date(modified))
             if size > 0 { parts.append(bytes(size)) }
             return parts.joined(separator: " · ")
         }
-        var parts = [kind.title, modified.formatted(date: .abbreviated, time: .omitted)]
+        var parts = [kind.title, L10n.date(modified)]
         if let width = info["width"], let height = info["height"] { parts.append("\(width) × \(height)") }
         // A long file still being read (`Indexer.finishLongFiles`): what isn't read yet can't match.
         let readTo = info["read_to"].flatMap(Int.init)
         if let pages = info["pages"].flatMap(Int.init) {
-            parts.append((pages == 1 ? "1 page" : "\(pages) pages") + (readTo.map { ", \($0) read so far" } ?? ""))
+            parts.append((pages == 1 ? L10n.tr("1 page") : L10n.tr("\(pages) pages")) + (readTo.map { L10n.tr(", \($0) read so far") } ?? ""))
         } else if readTo != nil {
-            parts.append("partly read so far")
+            parts.append(L10n.tr("partly read so far"))
         }
         if let duration { parts.append(Self.clock(duration)) }
         if size > 0 { parts.append(bytes(size)) }
@@ -169,12 +169,12 @@ enum ResultGroupKind: CaseIterable {
 
     var title: String {
         switch self {
-        case .screenshots: "Screenshots"
-        case .images: "Images"
-        case .documents: "Documents"
-        case .video: "Video"
-        case .audio: "Audio"
-        case .code: "Code"
+        case .screenshots: L10n.tr("Screenshots")
+        case .images: L10n.tr("Images")
+        case .documents: L10n.tr("Documents")
+        case .video: L10n.tr("Video")
+        case .audio: L10n.tr("Audio")
+        case .code: L10n.tr("Code")
         }
     }
 
@@ -246,13 +246,13 @@ struct ResultSet: Equatable {
 extension FileKind {
     var title: String {
         switch self {
-        case .screenshot: "Screenshot"
-        case .image: "Image"
+        case .screenshot: L10n.tr("Screenshot")
+        case .image: L10n.tr("Image")
         case .pdf: "PDF"
-        case .doc: "Document"
-        case .audio: "Audio"
-        case .video: "Video"
-        case .code: "Code"
+        case .doc: L10n.tr("Document")
+        case .audio: L10n.tr("Audio")
+        case .video: L10n.tr("Video")
+        case .code: L10n.tr("Code")
         }
     }
 

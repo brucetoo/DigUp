@@ -87,6 +87,9 @@ impl Status {
 
     /// One line for the tray and the window: "Indexing 42% · 120 of 306", "306 files indexed".
     pub fn line(&self, has_folders: bool, model: &Value) -> String {
+        if model["repair"] == true {
+            return "Bundled models are missing or corrupt. Repair the installation.".into();
+        }
         if !has_folders {
             return "No folders chosen yet".into();
         }
@@ -162,6 +165,9 @@ impl Status {
 
     /// Why results may be incomplete right now: the model isn't in yet, or files aren't read yet.
     pub fn caveat(&self, model: &Value) -> Option<String> {
+        if model["repair"] == true {
+            return Some("Bundled models are missing or corrupt. Repair the installation.".into());
+        }
         match model["state"].as_str() {
             Some("downloading") => {
                 return Some(format!("Matching words only until the model has downloaded ({}%)", (fraction(model) * 100.0) as u64))
@@ -293,5 +299,16 @@ mod tests {
         assert_eq!(number(999), "999");
         assert_eq!(number(1000), "1,000");
         assert_eq!(number(1234567), "1,234,567");
+    }
+
+    #[test]
+    fn corrupt_bundle_blocks_readiness_even_without_folders() {
+        let model = json!({"state": "failed", "repair": true});
+        let status = Status::default();
+        assert!(status.busy(&model));
+        assert_eq!(status.progress(&model), None);
+        assert_eq!(status.line(false, &model),
+                   "Bundled models are missing or corrupt. Repair the installation.");
+        assert_eq!(status.caveat(&model), Some(status.line(false, &model)));
     }
 }

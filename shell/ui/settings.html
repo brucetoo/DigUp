@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
   <meta charset="utf-8">
   <title>DigUp Settings</title>
@@ -8,6 +8,7 @@
 </head>
 <body>
   <nav class="tabs" id="tabs" role="tablist">
+    <button class="language-toggle" type="button">English</button>
     <button role="tab" data-tab="general">General</button>
     <button role="tab" data-tab="folders">Folders</button>
     <button role="tab" data-tab="code">Code</button>
@@ -52,9 +53,9 @@
 
       <h3>Updates</h3>
       <label class="option">
-        <input type="checkbox" id="update-checks">
+        <input type="checkbox" id="update-checks" disabled>
         <span class="text">
-          <span class="name">Check for updates automatically</span>
+          <span class="name">Manual updates only</span>
           <span class="info" id="update-info"></span>
         </span>
       </label>
@@ -142,14 +143,14 @@
         <div class="fact"><span>Location</span><button class="path-button" id="index-path"></button></div>
       </div>
       <h3>Privacy</h3>
-      <p class="privacy-text">DigUp reads the folders you choose and keeps what it learns in its index, on this
-        computer. It goes online only to download its model, once, and to check for updates (General), which sends nothing
-        about your files.</p>
+      <p class="privacy-text">DigUp reads the folders you choose and keeps its index on this computer. Packaged models
+        are verified locally, without network fallback. Updates are downloaded manually from the fork's releases page.</p>
       <p class="note"><span id="version"></span> <button class="link inline" id="licenses" hidden>Licenses</button></p>
     </section>
 
     <p class="note problem" id="problem" hidden></p>
   </main>
+  <script src="i18n.js"></script>
   <script src="shortcut.js"></script>
   <script src="settings.js"></script>
 </body>

@@ -59,6 +59,18 @@ public enum ModelFiles {
         all.filter { !FileManager.default.fileExists(atPath: folder.appendingPathComponent($0.name).path) }
     }
 
+    /// Verify installed resources without downloading or modifying them.
+    public static func verify(in folder: URL) throws {
+        for file in all {
+            let url = folder.appendingPathComponent(file.name)
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard (attributes[.size] as? NSNumber)?.int64Value == file.bytes,
+                  try sha256(of: url) == file.sha256 else {
+                throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: url.path])
+            }
+        }
+    }
+
     /// The SHA-256 of a file as lowercase hex, read in 8 MB pieces (a 555 MB file takes about half a second).
     public static func sha256(of url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)

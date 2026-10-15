@@ -29,7 +29,7 @@ function placeOf(hit) {
   if (hit.loc == null) return null;
   switch (hit.segment) {
     case "page":
-    case "page_image": return `p. ${Math.trunc(hit.loc)}`;
+    case "page_image": return t(`p. ${Math.trunc(hit.loc)}`);
     case "frame": return clock(hit.loc);
     case "audio": return hit.kind === "video" ? `♪ ${clock(hit.loc)}` : clock(hit.loc);
     case "lines": {
@@ -85,7 +85,7 @@ function span(hit) {
   if (hit.loc == null) return null;
   const first = Math.trunc(hit.loc), last = Math.trunc(hit.loc_end ?? hit.loc);
   const what = hit.segment === "cells" ? ["cell", "cells"] : ["line", "lines"];
-  return first === last ? `${what[0]} ${first}` : `${what[1]} ${first}–${last}`;
+  return t(first === last ? `${what[0]} ${first}` : `${what[1]} ${first}–${last}`);
 }
 
 /// It matched by meaning (not only its words or name).
@@ -95,6 +95,10 @@ function matchedMeaning(hit) {
 
 /// Why it's here, in a few words: "Matches the picture", "Matches the frame at 0:06".
 function reasonOf(hit) {
+  return t(reasonText(hit));
+}
+
+function reasonText(hit) {
   const words = hit.keyword_rank != null;
   if (!matchedMeaning(hit)) return words ? "Has your words" : "Matches its name";
   const at = hit.loc != null ? clock(hit.loc) : "";
@@ -126,7 +130,7 @@ function details(hit) {
   if (info.lines) parts.push(Number(info.lines) === 1 ? "1 line" : `${Number(info.lines).toLocaleString()} lines`);
   if (info.duration) parts.push(clock(Number(info.duration)));
   if (hit.size > 0) parts.push(bytes(hit.size));
-  return parts.join(" · ");
+  return parts.map(t).join(" · ");
 }
 
 function nameOf(path) {
@@ -158,12 +162,12 @@ function clock(seconds) {
 }
 
 function dateOf(seconds) {
-  return new Date(seconds * 1000).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return new Date(seconds * 1000).toLocaleDateString(I18n.language, { year: "numeric", month: "short", day: "numeric" });
 }
 
 /// Sizes the way file managers count them (1 KB = 1,000 bytes): "62 KB", "2.1 MB".
 function bytes(count) {
-  if (count < 1000) return `${count} bytes`;
+  if (count < 1000) return t(`${count} bytes`);
   const units = ["KB", "MB", "GB", "TB"];
   let value = count / 1000, unit = 0;
   while (value >= 1000 && unit < units.length - 1) { value /= 1000; unit += 1; }
@@ -223,7 +227,8 @@ function escaped(text) {
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text != null) node.textContent = text;
+  if (text != null) node.textContent = ["name", "title", "line", "row-sub", "passage", "number", "keycap", "folder"].includes(className)
+    ? text : t(text);
   return node;
 }
 

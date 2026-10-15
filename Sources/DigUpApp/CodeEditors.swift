@@ -55,6 +55,8 @@ nonisolated struct CodeEditor: Identifiable, Hashable, Sendable {
     /// Each file opens in the app macOS opens it with, at its start.
     static let defaultApp = CodeEditor(id: "", name: "The file's default app", method: .plain)
 
+    @MainActor var displayName: String { id.isEmpty ? L10n.tr("The file's default app") : name }
+
     /// Where code results open now (`AppController.setCodeEditor`).
     @MainActor private static let selection = CodeEditorSelection()
     @MainActor static var current: CodeEditor {

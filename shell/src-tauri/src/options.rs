@@ -14,6 +14,8 @@ pub struct Options {
     pub index: Option<PathBuf>,
     /// Where the model files are (DIGUP_MODELS for the helpers); None: the helper looks where it always does.
     pub models: Option<PathBuf>,
+    /// Installed models are verified locally; no downloader may repair a package.
+    pub bundled_models: bool,
     /// The folders to search and keep indexed, instead of the settings' (dev runs; setup is then skipped).
     pub roots: Vec<PathBuf>,
     /// Code search's folders, instead of the settings' (dev runs).
@@ -60,6 +62,7 @@ impl Options {
             helper: default_helper(),
             index: None,
             models: None,
+            bundled_models: false,
             roots: Vec::new(),
             code_roots: Vec::new(),
             hotkey: None,
@@ -115,6 +118,18 @@ impl Options {
 }
 
 impl Options {
+    pub fn resolve_models(&mut self, resource_dir: Option<PathBuf>, packaged: bool, windows: bool) {
+        (self.models, self.bundled_models) = model_location(self.models.take(), resource_dir, packaged, windows);
+    }
+
+    pub fn model_arguments(&self) -> Vec<String> {
+        let mut args = vec![if self.bundled_models { "verify-models" } else { "download-model" }.into()];
+        if let Some(models) = &self.models {
+            args.extend(["--to".into(), models.display().to_string()]);
+        }
+        args
+    }
+
     /// The index folder the helpers use: the one given, else the helper's default (which the watcher must pass over).
     pub fn index_folder(&self) -> Option<PathBuf> {
         if self.index.is_some() {
@@ -126,6 +141,41 @@ impl Options {
         let data = std::env::var_os("XDG_DATA_HOME").filter(|value| !value.is_empty()).map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")));
         data.map(|data| data.join("digup").join("index"))
+    }
+}
+
+fn model_location(explicit: Option<PathBuf>, resources: Option<PathBuf>, packaged: bool, windows: bool)
+    -> (Option<PathBuf>, bool) {
+    let required = windows && packaged;
+    if explicit.is_some() {
+        return (explicit, required);
+    }
+    if let Some(resources) = resources {
+        let models = resources.join("models");
+        if required || models.is_dir() {
+            return (Some(models), true);
+        }
+    }
+    (None, required)
+}
+
+#[cfg(test)]
+mod model_tests {
+    use super::*;
+
+    #[test]
+    fn installed_windows_never_uses_cache_or_downloads() {
+        let resource = PathBuf::from("/missing/digup-resource-test");
+        assert_eq!(model_location(None, Some(resource.clone()), true, true),
+                   (Some(resource.join("models")), true));
+        assert_eq!(model_location(None, None, true, true), (None, true));
+    }
+
+    #[test]
+    fn explicit_override_wins_and_unbundled_linux_keeps_downloads() {
+        let explicit = PathBuf::from("/custom/models");
+        assert_eq!(model_location(Some(explicit.clone()), Some("/package".into()), true, true), (Some(explicit), true));
+        assert_eq!(model_location(None, Some("/missing/digup-resource-test".into()), false, false), (None, false));
     }
 }
 

@@ -26,3 +26,4 @@ shell/src-tauri/gen/
 # What scripts/package-*.sh gather for the packages
 shell/src-tauri/helper/
 shell/src-tauri/THIRD-PARTY-NOTICES.txt
+shell/src-tauri/models/

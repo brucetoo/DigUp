@@ -61,6 +61,7 @@ let appTargets: [Target] = [
     .executableTarget(
         name: "DigUpApp",
         dependencies: ["DigUpKit", .product(name: "Sparkle", package: "Sparkle")],
+        resources: [.process("Localization")],
         swiftSettings: [.defaultIsolation(MainActor.self)],
         linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
     ),
