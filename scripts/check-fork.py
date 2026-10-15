@@ -276,8 +276,9 @@ def translation_errors(root):
             if not translated_tokens <= source_tokens:
                 errors.append(f"{resource}: invalid interpolation tokens for {key!r}")
         for path in sorted((root / folder).rglob(suffix)):
+            source = path.read_text(encoding="utf-8")
             try:
-                extracted = list(messages(path.read_text(encoding="utf-8"), swift))
+                extracted = list(messages(source, swift))
             except ValueError as error:
                 raise ValueError(f"{path.relative_to(root)}: {error}") from error
             for line, key in extracted:
@@ -291,6 +292,24 @@ def translation_errors(root):
                     present = key in values
                 if not present:
                     errors.append(f"{path.relative_to(root)}:{line}: missing translation {key.replace(DYNAMIC, '{dynamic}')!r}")
+            if swift:
+                # Upstream additions may not use our translation helper yet.
+                # Report plain UI literals as well as missing catalog entries.
+                tokens = lex(source, True)
+                controls = {"Text", "Button", "Toggle", "Label", "Picker", "LabeledContent", "Section",
+                            "help", "navigationTitle", "accessibilityLabel"}
+                brands = {"DigUp", "EmbeddingGemma 2", "Google · Apache 2.0 · 865 MB"}
+                for i, (kind, value, offset, _) in enumerate(tokens[:-2]):
+                    if kind != "word" or value not in controls or tokens[i + 1][1] != "(":
+                        continue
+                    argument = tokens[i + 2]
+                    if argument[0] != "string" or len(argument[1]) != 1:
+                        continue
+                    literal = argument[1][0]
+                    if literal in brands or not re.search("[A-Za-z]", literal):
+                        continue
+                    line = source.count("\n", 0, offset) + 1
+                    errors.append(f"{path.relative_to(root)}:{line}: unlocalized UI literal {literal!r}; use L10n.tr")
     return errors, dynamic
 
 

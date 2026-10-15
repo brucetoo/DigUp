@@ -85,6 +85,13 @@ t(active ? "Hel" + "lo" : "New message");
         self.assertEqual(errors, [])
         self.assertEqual(dynamic, 1)
 
+    def test_new_upstream_ui_literals_require_localization(self):
+        path = self.root / "Sources/DigUpApp/App.swift"
+        path.write_text('Text("DigUp")\nButton("New feature") {}\nText(L10n.tr("Hello"))')
+        errors, _ = CHECK.check(self.root)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("unlocalized UI literal 'New feature'", errors[0])
+
     def test_invalid_catalog_and_tokens(self):
         path = self.root / "shell/ui/zh-Hans.json"
         for invalid in ('{"Hello":"a","Hello":"b"}', '{"Hello":""}', '[]'):
