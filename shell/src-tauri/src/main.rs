@@ -316,13 +316,13 @@ fn setup_info(app: AppHandle, shell: State<'_, Arc<Shell>>) -> Value {
 
 /// Folders chosen in the system's folder picker (none when it's cancelled).
 #[tauri::command]
-async fn pick_folders(app: AppHandle, shell: State<'_, Arc<Shell>>) -> Vec<String> {
+async fn pick_folders(app: AppHandle, shell: State<'_, Arc<Shell>>) -> Result<Vec<String>, String> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog().file().set_title(shell.text("Add Folders")).pick_folders(move |folders| {
         let _ = sender.send(folders);
     });
     let picked = receiver.await.ok().flatten().unwrap_or_default();
-    picked.into_iter().filter_map(|folder| folder.into_path().ok()).map(|path| path.display().to_string()).collect()
+    Ok(picked.into_iter().filter_map(|folder| folder.into_path().ok()).map(|path| path.display().to_string()).collect())
 }
 
 /// Setup's folders, kept on leaving its folders step (or on Save, choosing folders later): indexing starts on them at
@@ -1708,7 +1708,7 @@ fn set_status(app: &AppHandle, text: &str) {
     let shell = app.state::<Arc<Shell>>();
     if let Some(status) = shell.status_item.lock().unwrap().as_ref() {
         let _ = status.set_text(shell.text(text));
-    }
+    };
 }
 
 /// Indexing or the model moved on: the tray's first line and items, and every page, follow (status.rs has the words).
